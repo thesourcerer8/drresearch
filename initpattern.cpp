@@ -11,7 +11,12 @@ int main(int argc, char* argv[])
       long long block=0;
 	BYTE pMBR[512] = { 0 };
 	memcpy(pMBR, sco, sizeof(sco));
-	HANDLE hDevice = CreateFileA("\\\\.\\PhysicalDrive1", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+	if(argc!=2)
+	{
+		fprintf(stderr,"Usage: initpattern.exe \\\\.\\PhysicalDrive1\n");
+		return -1;
+	}
+	HANDLE hDevice = CreateFileA(argv[1], GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
 
 	if (hDevice == INVALID_HANDLE_VALUE)
 	{
