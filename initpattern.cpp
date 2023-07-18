@@ -1,6 +1,6 @@
-#include<Windows.h>
-#include<stdio.h>
-#include<iostream>
+#include <Windows.h>
+#include <stdio.h>
+#include <iostream>
 using namespace std;
 unsigned char sco[512] = "                                                                                                                         "; 
 
