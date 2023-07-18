@@ -18,14 +18,12 @@ sub readfile($)
 
 my $fndump=$ARGV[0];
 my $fnxor=$ARGV[1];
-my $fnxorp=sprintf("%64s",$fnxor);
+my $fnxorp=sprintf("%74s",$fnxor);
 
 #print "Loading dump $fndump and XOR file $fnxor\n";
 
 my $xor=readfile($fnxor);
 my $xorl=length($xor);
-
-print STDERR "$fnxorp XOR Length: $xorl modulo18336: ".($xorl%(18336))."\n";
 
 open IN,"<$fndump";
 binmode IN;
@@ -36,7 +34,7 @@ my $found=0;
 
 my $sector="";
 my $wanted=$xorl/10;
-while($total<100000000)
+while($total<10000000000)
 {
   read IN,$sector,$xorl;
   #print STDERR "LEN: ".length($sector)."\n";
@@ -44,8 +42,9 @@ while($total<100000000)
   my $decoded=$sector ^ $xor;
   #print STDERR "DECODED: ".length($sector)."\n";
 
-  my $count =($decoded =~ tr/x//);
-  print $decoded if($count>$wanted);
+  my $count =0; #($decoded =~ tr/x//);
+  $count++ if($decoded=~m/Block/);
+  print $decoded if($decoded=~m/Block/);
 
   #print STDERR "$count\n";
 
@@ -55,5 +54,5 @@ while($total<100000000)
   #last;
 }
 
-print STDERR "$fnxorp Total: $total Found: $found\n";
+print STDERR "$fnxorp XORlen: $xorl modulo18336: ".($xorl%(18336))." Total: $total   Found: $found\n";
 
