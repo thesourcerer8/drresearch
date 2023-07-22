@@ -4,12 +4,21 @@ use Getopt::Long;
 
 my $maxy=-1;
 my $bw=1;
+my $help=0;
 
-GetOptions( 'maxy=i' => \$maxy,
-	    'bw=i' => \$bw
+GetOptions( 'max_y=i' => \$maxy,
+	    'bw=i' => \$bw,
+	    'help|?' =>\$help
           );
 
-my @fns=@ARGV || <*.dmp>;
+if($help)
+{
+  print "How to use dmpview:\nYou can call dmpview without any arguments, then it will display all the .dmp files in the current directory.\nYou can specify single files to be displayed on the commandline.\nParameters:\n  dmpview --max_y=100  -> display only the first 100 pages/records\n  dmpview --bw=0  -> display the image as grayscale\n  dmpview --bw=1 -> display the image as black\&white\n";
+  exit;
+}
+
+my @fns=@ARGV;
+@fns= <*.dmp> if(!scalar(@ARGV)); 
 
 foreach my $fn(@fns)
 {
@@ -25,14 +34,13 @@ foreach my $fn(@fns)
   $maxy=$bs if($maxy<0);
 
   print "Filename: $fn\nfile size: $fs\npage size: $pagesize\nblock size: $bs\n";
-  print "Warning: There is a rest at the end of the file: $rest Bytes\n" if($rest);
+  print "Warning: There is a rest at the end of the file: $rest Bytes (please check the pagesize!)\n" if($rest);
 
   $pagesize*=8 if($bw);
   
   my $cmd="display -depth ".($bw?1:8)." -size $pagesize"."x$bs -crop $pagesize"."x$maxy+0+0 \"gray:$fn\"";
-
    
-  print "Cmd: $cmd\n";
+  #print "Cmd: $cmd\n";
   system($cmd);
 
 }
