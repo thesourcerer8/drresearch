@@ -1,0 +1,38 @@
+#!/usr/bin/perl -w
+use Getopt::Long;
+
+
+my $maxy=-1;
+my $bw=1;
+
+GetOptions( 'maxy=i' => \$maxy,
+	    'bw=i' => \$bw
+          );
+
+my @fns=@ARGV || <*.dmp>;
+
+foreach my $fn(@fns)
+{
+
+  my $pagesize=512; 
+  $pagesize=$1 if($fn=~m/\((\d+)[bp].*?\)/);
+  $pagesize=$1*1024 if($fn=~m/\((\d+)[kK].*?\)/);
+
+  my $fs=-s $fn;
+  my $bs=int($fs/$pagesize);
+  my $rest=$fs % $pagesize;
+
+  $maxy=$bs if($maxy<0);
+
+  print "Filename: $fn\nfile size: $fs\npage size: $pagesize\nblock size: $bs\n";
+  print "Warning: There is a rest at the end of the file: $rest Bytes\n" if($rest);
+
+  $pagesize*=8 if($bw);
+  
+  my $cmd="display -depth ".($bw?1:8)." -size $pagesize"."x$bs -crop $pagesize"."x$maxy+0+0 \"gray:$fn\"";
+
+   
+  print "Cmd: $cmd\n";
+  system($cmd);
+
+}
