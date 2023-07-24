@@ -2,5 +2,6 @@
 perl xorspread.pl
 for a in *.xor
 do 
-	perl tryxor.pl phiphi\ dump.zDb9mRTX.part "$a" >"$a.decoded"
+	perl tryxor.pl "Sandisk(18336b_128p).dmp" "$a" >"$a.decoded"
 done
+perl xorstat.pl
