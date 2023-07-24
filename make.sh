@@ -1,7 +1,10 @@
 #!/bin/bash
 perl xorspread.pl
-for a in *.xor
-do 
-	perl tryxor.pl "Sandisk(18336b_128p).dmp" "$a" >"$a.decoded"
+for dump in *.dmp
+do
+  for xor in *.xor
+  do 
+  	perl tryxor.pl "$dump" "$xor"
+  done
 done
 perl xorstat.pl

@@ -25,9 +25,16 @@ my $fnxorp=sprintf("%74s",$fnxor);
 my $xor=readfile($fnxor);
 my $xorl=length($xor);
 
+
+my $pagesize=512;
+  $pagesize=$1 if($fndump=~m/\((\d+)[bp].*?\)/);
+  $pagesize=$1*1024 if($fndump=~m/\((\d+)[kK].*?\)/);
+
 open IN,"<$fndump";
 binmode IN;
-binmode STDOUT;
+open OUT,">$fndump.pagesize$pagesize.decoded";
+print "Writing XOR decoded data to $fndump.pagesize$pagesize.decoded\n";
+binmode OUT;
 
 my $total=0;
 my $found=0;
@@ -44,7 +51,7 @@ while($total<10000000000)
 
   my $count =0; #($decoded =~ tr/x//);
   $count++ if($decoded=~m/Block/);
-  print $decoded if($decoded=~m/Block/);
+  print OUT $decoded if($decoded=~m/Block/);
 
   #print STDERR "$count\n";
 
@@ -55,4 +62,6 @@ while($total<10000000000)
 }
 
 print STDERR "$fnxorp XORlen: $xorl modulo18336: ".($xorl%(18336))." Total: $total   Found: $found\n";
+close IN;
+close OUT;
 
