@@ -123,6 +123,7 @@ foreach my $fn(@fns)
       $stat{'found'}++;
       $stat{'lbafound'}++ if(defined($lba));
       $stat{'maxlba'}=mymax($lba,$stat{'maxlba'}) if(defined($lba));
+      $stat{'minlba'}=mymin($lba,$stat{'minlba'}) if(defined($lba));
 
       $offset = $result + 1; # Where to search for the next sector inside this page?
       $result = index($sector, $char, $offset);
@@ -200,7 +201,8 @@ $prev=$_;
   print OUT "<h2 id='FinalStatistic'>Final statistics</h2>\n";
   print OUT "Filename: $fn<br/>file size: ".byt2gb($fs)."<br/>page size: $pagesize<br/>block size: $bs pages (".($bs*$pagesize)." Bytes)<br/>";
   print OUT "Number of unique LBA's found: ".sec2gb($stat{"uniqueLBA"})."<br/>\n";
-  print OUT "Biggest LBA found: ".sec2gb($stat{'maxlba'})."<br/>\n" if(defined($stat{'maxlba'}));
+  print OUT "Lowest LBA found: ".sec2gb($stat{'minlba'})."<br/>\n" if(defined($stat{'minlba'}));
+  print OUT "Highes LBA found: ".sec2gb($stat{'maxlba'})."<br/>\n" if(defined($stat{'maxlba'}));
   print OUT "Percentage of LBA's found: ".sprintf("%.4f",100*$stat{'uniqueLBA'}/($stat{'maxlba'}||1))."%<br/>\n";
   print OUT "<br/>\n";
   menu();
