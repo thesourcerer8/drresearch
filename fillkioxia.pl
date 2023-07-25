@@ -23,6 +23,8 @@ while(!$ende)
   $patch="X" x 70 if(length($patch) != 70);
   #print "len: ".length($sector)."\n";
   substr($sector,1028,70)=$patch if(!$ende);
+  substr($sector,1028+70,120)=substr($sector,0,120) if(!$ende);
+
   print OUT $sector;
   $npage++;
 }
