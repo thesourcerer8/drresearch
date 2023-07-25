@@ -41,6 +41,9 @@ foreach my $fn(@fns)
   my $cmd="display -depth ".($bw?1:8)." -size $pagesize"."x$bs -crop $pagesize"."x$maxy+0+0 \"gray:$fn\"";
    
   #print "Cmd: $cmd\n";
-  system($cmd);
+  
 
+  system($cmd);
+  my $cmd2="convert -depth ".($bw?1:8)." -size $pagesize"."x$bs -crop $pagesize"."x$maxy+0+0 \"gray:$fn\" output.png";
+  print "$cmd2\n";
 }
