@@ -4,7 +4,7 @@
 //Key can be patched selectively to any of these areas
 //so far it only supports two structures DA SA ECC and SA DA ECC//
 #include <stdio.h>
-#include <conio.h>
+//#include <conio.h>
 #include <string.h>
 #include <stdlib.h>
 
