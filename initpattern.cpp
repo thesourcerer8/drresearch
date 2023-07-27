@@ -31,7 +31,7 @@ int main(int argc, char* argv[])
   long long borderphi=1536*1024*2; // 256 MB FF
 
 
-  HANDLE hDevice = CreateFileA(argv[1], GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, 0, NULL);
+  HANDLE hDevice = CreateFileA(argv[1], GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
 
   if (hDevice == INVALID_HANDLE_VALUE)
   {
