@@ -93,7 +93,7 @@ int main(int argc, char* argv[])
     }
     else if(sector<border0 || sector >=borderphi)
     {
-      sprintf((char*)pWriteSector,"|Block#%012lld (0x%08llX) Byte: %020lld Pos: %10lld MB\n***",sector,sectr,sector*512,sector>>11);
+      sprintf((char*)pWriteSector,"|Block#%012lld (0x%08llX) Byte: %020lld Pos: %10lld MB\n***",sector,sector,sector*512,sector>>11);
       memset(pWriteSector+strlen((const char*)pWriteSector),'x',510-strlen((const char*)pWriteSector));
       pWriteSector[510] = '\n';
       pWriteSector[511] = 0x00;
