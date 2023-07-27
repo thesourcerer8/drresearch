@@ -4,18 +4,25 @@
 using namespace std;
 unsigned char sco[512] = "                                                                                                                         "; 
 
+
 int main(int argc, char* argv[])
 {
   DWORD Ropen;
   int wearedone=0;
   long long block=0;
+  long long targetsize=-1;
   BYTE pMBR[512] = { 0 };
   memcpy(pMBR, sco, sizeof(sco));
-  if(argc!=2)
+  if(argc<2)
   {
-    fprintf(stderr,"Usage: initpattern.exe \\\\.\\PhysicalDrive1\n");
+    fprintf(stderr,"Usage: initpattern.exe \\\\.\\PhysicalDrive1 [size in MB]\n");
     system("wmic diskdrive list brief");
     return -1;
+  }
+  if(argc>2)
+  {
+    targetsize=atoi(argv[2])<<11;
+    printf("Setting the target size to %lld sectors (%lld GB).\n",targetsize,targetsize>>30);
   }
 
   long long border0=512*1024*2; // 512MB pattern
@@ -40,7 +47,7 @@ int main(int argc, char* argv[])
 
 
   DeviceIoControl(hDevice, FSCTL_LOCK_VOLUME, NULL, 0, NULL, 0, &Ropen, NULL);
-      
+  printf("Creating old pattern\n");
   while(!wearedone)
   { 
     sprintf((char*)pMBR,"|Block#%012lld (0x%08llX) Byte: %020lld Pos: %10lld MB\n*** OVERWRITTEN",block,block,block*512,block>>11);
@@ -61,7 +68,7 @@ int main(int argc, char* argv[])
 
   SetFilePointer(hDevice,0,NULL,FILE_BEGIN);
   block=0;
-
+  printf("Creating new pattern\n");
   while(!wearedone)
   { 
     if(block>=border0 && block<border7)
@@ -96,7 +103,7 @@ int main(int argc, char* argv[])
   }
 
   DeviceIoControl(hDevice, FSCTL_UNLOCK_VOLUME, NULL, 0, NULL, 0, &Ropen, NULL);
-  printf("done.\n");
+  printf("We are done.\n");
   return 0;
 }
 
