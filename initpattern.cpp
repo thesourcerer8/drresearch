@@ -62,8 +62,16 @@ int main(int argc, char* argv[])
     pWriteSector[511] = 0x00;
     if (((sector&7)==7) && !WriteFile(hDevice, pWriteBlock, 4096, &Ropen, NULL)) 
     {
-      printf("Error when writing: %ld", GetLastError());
-      return 0;
+      if(GetLastError()==ERROR_SECTOR_NOT_FOUND)
+      {
+        printf("Reached last sector.");
+        wearedone=1;
+      }
+      else
+      {
+        printf("Error when writing: %ld", GetLastError());  
+        return 0;
+      }
     }
     sector++;
     if(!(sector&0xffff))
@@ -100,8 +108,16 @@ int main(int argc, char* argv[])
     }
     if (((sector&7)==7) && !WriteFile(hDevice, pWriteBlock, 4096, &Ropen, NULL)) 
     {
-      printf("Error when writing: %ld", GetLastError());
-      return 0;
+      if(GetLastError()==ERROR_SECTOR_NOT_FOUND)
+      {
+        printf("Reached last sector.");
+        wearedone=1;
+      }
+      else
+      {
+        printf("Error when writing: %ld", GetLastError());  
+        return 0;
+      }
     }
     sector++;
     if(!(sector&0xffff))
