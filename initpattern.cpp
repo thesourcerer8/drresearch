@@ -22,7 +22,7 @@ int main(int argc, char* argv[])
   if(argc>2)
   {
     targetsize=atol(argv[2])<<11;
-    printf("Setting the target size to %ld MB / %lld sectors / %lld GB.\n",targetsize>>11,targetsize,targetsize>>30);
+    printf("Setting the target size to %lld MB / %lld sectors / %lld GB.\n",targetsize>>11,targetsize,targetsize>>30);
   }
 
   long long border0=512*1024*2; // 512MB pattern
