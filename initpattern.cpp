@@ -56,7 +56,7 @@ int main(int argc, char* argv[])
     pMBR[511] = 0x00;
     if (!WriteFile(hDevice, pMBR, 512, &Ropen, NULL)) 
     {
-      printf("Error: %ld", GetLastError());
+      printf("Error when writing: %ld", GetLastError());
       return 0;
     }
     block++;
@@ -93,7 +93,7 @@ int main(int argc, char* argv[])
     }
     if (!WriteFile(hDevice, pMBR, 512, &Ropen, NULL)) 
     {
-      printf("Error: %ld", GetLastError());
+      printf("Error when writing: %ld", GetLastError());
       return 0;
     }
     block++;
