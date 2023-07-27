@@ -2,17 +2,18 @@
 #include <stdio.h>
 #include <iostream>
 using namespace std;
-unsigned char sco[512] = "                                                                                                                         "; 
-
 
 int main(int argc, char* argv[])
 {
   DWORD Ropen;
+  DWORD LOWpart=0;
+  DWORD HIGHpart=0;
   int wearedone=0;
-  long long block=0;
+  long long sector=0;
   long long targetsize=-1;
-  BYTE pMBR[512] = { 0 };
-  memcpy(pMBR, sco, sizeof(sco));
+  BYTE pWriteBlock[4096] = { 0 };
+  BYTE *pWriteSector=pWriteBlock;
+ 
   if(argc<2)
   {
     fprintf(stderr,"Usage: initpattern.exe \\\\.\\PhysicalDrive1 [size in MB]\n");
@@ -47,61 +48,67 @@ int main(int argc, char* argv[])
 
 
   DeviceIoControl(hDevice, FSCTL_LOCK_VOLUME, NULL, 0, NULL, 0, &Ropen, NULL);
+
+  LOWpart=GetFileSize(hDevice,&HIGHpart);
+  printf("HIGH: %ld LOW: %ld\n",HIGHpart,LOWpart);
+  
   printf("Creating old pattern\n");
   while(!wearedone)
-  { 
-    sprintf((char*)pMBR,"|Block#%012lld (0x%08llX) Byte: %020lld Pos: %10lld MB\n*** OVERWRITTEN",block,block,block*512,block>>11);
-    memset(pMBR+strlen((const char*)pMBR),'x',510-strlen((const char*)pMBR));
-    pMBR[510] = '\n';
-    pMBR[511] = 0x00;
-    if (!WriteFile(hDevice, pMBR, 512, &Ropen, NULL)) 
+  {
+    pWriteSector=pWriteBlock+(sector&7)<<9; // We set the pointer to the current sector inside the 4096 Byte WriteBlock
+    sprintf((char*)pWriteSector,"|Block#%012lld (0x%08llX) Byte: %020lld Pos: %10lld MB\n*** OVERWRITTEN",sector,sector,sector*512,sectr>>11);
+    memset(pWriteSector+strlen((const char*)pWriteSector),'x',510-strlen((const char*)pWriteSector));
+    pWriteSector[510] = '\n';
+    pWriteSector[511] = 0x00;
+    if (((sector&7)==7) && !WriteFile(hDevice, pWriteBlock, 4096, &Ropen, NULL)) 
     {
       printf("Error when writing: %ld", GetLastError());
       return 0;
     }
-    block++;
-    if(!(block&0xffff))
+    sector++;
+    if(!(sector&0xffff))
     {
-      printf("Status: Block %lld (%lld GB)\n",block,block/2/1000/1000);
+      printf("Status: Sector %lld (%lld GB)\n",sector,sector/2/1024/1024);
     }
-    if(block==targetsize) wearedone=1;
+    if(sector==targetsize) wearedone=1;
   }
 
   SetFilePointer(hDevice,0,NULL,FILE_BEGIN);
-  block=0;
+  sector=0;
   printf("Creating new pattern\n");
   while(!wearedone)
   { 
-    if(block>=border0 && block<border7)
+    pWriteSector=pWriteBlock+(sector&7)<<9; // We set the pointer to the current sector inside the 4096 Byte WriteBlock
+    if(sector==border0)
     {
-      memset(pMBR, 0, 512);
+      memset(pWriteBlock, 0, 4096);
     }
-    else if(block>=border7 && block<borderf)
+    else if(sector==border7)
     {
-      memset(pMBR, 0x77, 512);
+      memset(pWriteSector, 0x77, 4096);
     }
-    else if(block>=borderf && block<borderphi)
+    else if(sector==borderf)
     {
-      memset(pMBR, 0xff, 512);
+      memset(pWriteSector, 0xff, 4096);
     }
-    else
+    else if(sector<border0 || sector >=borderphi)
     {
-      sprintf((char*)pMBR,"|Block#%012lld (0x%08llX) Byte: %020lld Pos: %10lld MB\n***",block,block,block*512,block>>11);
-      memset(pMBR+strlen((const char*)pMBR),'x',510-strlen((const char*)pMBR));
-      pMBR[510] = '\n';
-      pMBR[511] = 0x00;
+      sprintf((char*)pWriteSector,"|Block#%012lld (0x%08llX) Byte: %020lld Pos: %10lld MB\n***",sector,sectr,sector*512,sector>>11);
+      memset(pWriteSector+strlen((const char*)pWriteSector),'x',510-strlen((const char*)pWriteSector));
+      pWriteSector[510] = '\n';
+      pWriteSector[511] = 0x00;
     }
-    if (!WriteFile(hDevice, pMBR, 512, &Ropen, NULL)) 
+    if (((sector&7)==7) && !WriteFile(hDevice, pWriteBlock, 4096, &Ropen, NULL)) 
     {
       printf("Error when writing: %ld", GetLastError());
       return 0;
     }
-    block++;
-    if(!(block&0xffff))
+    sector++;
+    if(!(sector&0xffff))
     {
-      printf("Status: Block %lld (%lld GB)\n",block,block/2/1000/1000);
+      printf("Status: Sector %lld (%lld GB)\n",sector,sector/2/1024/1024);
     }
-    if(block==targetsize) wearedone=1;
+    if(sector==targetsize) wearedone=1;
   }
 
   DeviceIoControl(hDevice, FSCTL_UNLOCK_VOLUME, NULL, 0, NULL, 0, &Ropen, NULL);
