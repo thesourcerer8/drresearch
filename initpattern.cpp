@@ -14,6 +14,7 @@ int main(int argc, char* argv[])
   if(argc!=2)
   {
     fprintf(stderr,"Usage: initpattern.exe \\\\.\\PhysicalDrive1\n");
+    system("wmic diskdrive list brief");
     return -1;
   }
 
