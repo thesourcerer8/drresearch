@@ -35,7 +35,7 @@ int main(int argc, char* argv[])
 
   if (hDevice == INVALID_HANDLE_VALUE)
   {
-    printf("%ld", GetLastError());
+    printf("CreateFileA returned an error when trying to open the file: %ld", GetLastError());
     return 0;
   }
   printf("Opened successfully\n");
