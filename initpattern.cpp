@@ -64,6 +64,7 @@ int main(int argc, char* argv[])
     {
       printf("Status: Block %lld (%lld GB)\n",block,block/2/1000/1000);
     }
+    if(block==targetsize) wearedone=1;
   }
 
   SetFilePointer(hDevice,0,NULL,FILE_BEGIN);
@@ -100,6 +101,7 @@ int main(int argc, char* argv[])
     {
       printf("Status: Block %lld (%lld GB)\n",block,block/2/1000/1000);
     }
+    if(block==targetsize) wearedone=1;
   }
 
   DeviceIoControl(hDevice, FSCTL_UNLOCK_VOLUME, NULL, 0, NULL, 0, &Ropen, NULL);
