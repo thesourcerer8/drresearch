@@ -55,7 +55,7 @@ int main(int argc, char* argv[])
   printf("Creating old pattern\n");
   while(!wearedone)
   {
-    pWriteSector=pWriteBlock+(sector&7)<<9; // We set the pointer to the current sector inside the 4096 Byte WriteBlock
+    pWriteSector=pWriteBlock+((sector&7)<<9); // We set the pointer to the current sector inside the 4096 Byte WriteBlock
     sprintf((char*)pWriteSector,"|Block#%012lld (0x%08llX) Byte: %020lld Pos: %10lld MB\n*** OVERWRITTEN",sector,sector,sector*512,sector>>11);
     memset(pWriteSector+strlen((const char*)pWriteSector),'x',510-strlen((const char*)pWriteSector));
     pWriteSector[510] = '\n';
@@ -78,7 +78,7 @@ int main(int argc, char* argv[])
   printf("Creating new pattern\n");
   while(!wearedone)
   { 
-    pWriteSector=pWriteBlock+(sector&7)<<9; // We set the pointer to the current sector inside the 4096 Byte WriteBlock
+    pWriteSector=pWriteBlock+((sector&7)<<9); // We set the pointer to the current sector inside the 4096 Byte WriteBlock
     if(sector==border0)
     {
       memset(pWriteBlock, 0, 4096);
