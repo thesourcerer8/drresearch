@@ -1,13 +1,13 @@
 #include <windows.h>
 #include <stdio.h>
-#include <iostream>
-using namespace std;
+//#include <iostream>
+//using namespace std;
 
 int main(int argc, char* argv[])
 {
   DWORD Ropen;
-  DWORD LOWpart=0;
-  DWORD HIGHpart=0;
+  //DWORD LOWpart=0;
+  //DWORD HIGHpart=0;
   int wearedone=0;
   long long sector=0;
   long long targetsize=-1;
@@ -32,12 +32,16 @@ int main(int argc, char* argv[])
   long long borderphi=1536*1024*2; // 256 MB FF
 
 
-  HANDLE hDevice = CreateFileA(argv[1], GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, 0, NULL);
+  HANDLE hDevice = CreateFileA(argv[1], GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
 
   if (hDevice == INVALID_HANDLE_VALUE)
   {
-    printf("CreateFileA returned an error when trying to open the file: %ld", GetLastError());
-    return 0;
+    hDevice = CreateFileA(argv[1], GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, 0, NULL);
+    if (hDevice == INVALID_HANDLE_VALUE)
+    {
+      printf("CreateFileA returned an error when trying to open the file: %ld", GetLastError());
+      return 0;
+    }
   }
   printf("Opened successfully\n");
 
@@ -49,8 +53,8 @@ int main(int argc, char* argv[])
 
   DeviceIoControl(hDevice, FSCTL_LOCK_VOLUME, NULL, 0, NULL, 0, &Ropen, NULL);
 
-  LOWpart=GetFileSize(hDevice,&HIGHpart);
-  printf("HIGH: %ld LOW: %ld\n",HIGHpart,LOWpart);
+  //LOWpart=GetFileSize(hDevice,&HIGHpart);
+  //printf("HIGH: %ld LOW: %ld\n",HIGHpart,LOWpart); // Does not work
   
   printf("Creating old pattern\n");
   while(!wearedone)
