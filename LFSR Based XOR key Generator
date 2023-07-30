@@ -1,0 +1,67 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+#define PAGE_SIZE 18336
+#define BLOCK_SIZE 384
+
+// Function to generate a random key
+unsigned char generate_random_key() {
+    return (unsigned char)(rand() % 256);
+}
+
+// Function to perform the axor operation using the key
+void axor_encrypt(unsigned char *data, int size, unsigned char key) {
+    for (int i = 0; i < size; i++) {
+        data[i] ^= key;
+    }
+}
+
+int main() {
+    // Seed value input from the user
+    unsigned int seed_value;
+    printf("Enter a seed value for the random number generator: ");
+    scanf("%u", &seed_value);
+
+    // Seed the random number generator with the user-provided seed
+    srand(seed_value);
+
+    // Determine the total number of bytes in the memory chip
+    int total_bytes = PAGE_SIZE * BLOCK_SIZE;
+
+    // Allocate memory for the data (ascii characters)
+    unsigned char *data = (unsigned char *)malloc(total_bytes * sizeof(unsigned char));
+
+    // Initialize the data with ascii characters (e.g., all zeros)
+    for (int i = 0; i < total_bytes; i++) {
+        data[i] = '0';
+    }
+
+    // Divide the data into blocks and encrypt each block with a different key
+    for (int block = 0; block < BLOCK_SIZE; block++) {
+        // Generate a random key for this block
+        unsigned char key = generate_random_key();
+
+        // Calculate the starting and ending index of the current block
+        int start_index = block * PAGE_SIZE;
+        int end_index = start_index + PAGE_SIZE;
+
+        // Perform the axor operation on the data block using the key
+        axor_encrypt(&data[start_index], PAGE_SIZE, key);
+    }
+
+    // Save the encrypted data to a file
+    FILE *file = fopen("encrypted_data.txt", "wb");
+    if (file != NULL) {
+        fwrite(data, sizeof(unsigned char), total_bytes, file);
+        fclose(file);
+        printf("Data encrypted and saved to 'encrypted_data.txt'.\n");
+    } else {
+        printf("Error: Unable to open the file for writing.\n");
+    }
+
+    // Free the allocated memory
+    free(data);
+
+    return 0;
+}
