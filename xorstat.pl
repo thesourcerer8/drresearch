@@ -47,15 +47,27 @@ sub numalpha
 }
 
 my @fns=@ARGV;
-@fns= <*.decoded> if(!scalar(@ARGV));
+@fns= <*.decoded> if(!scalar(@fns));
+@fns= <*.dmp> if(!scalar(@fns));
 
 foreach my $fn(@fns)
 {
-
   my $pagesize=512;
   my $blocksize=256;
-  $pagesize=$1 if($fn=~m/\((\d+)[bp].*?\)/);
-  $pagesize=$1*1024 if($fn=~m/\((\d+)[kK].*?\)/);
+  if($fn=~m/\((\d+)[bp].*?\)/)
+  {
+    $pagesize=$1 ;
+  }
+  elsif($fn=~m/\((\d+)[kK].*?\)/)
+  {
+    $pagesize=$1*1024;
+  } 
+  else
+  {
+    print STDERR "Error: The pagesize has not been defined in the filename. Please give the pagesize by naming the dump files like mydump(18324p).dmp\n";
+    exit; 
+  }
+  
   $pagesize=$pagesizeoverride if(defined($pagesizeoverride));
 
   my $fs=-s $fn;
@@ -100,6 +112,11 @@ foreach my $fn(@fns)
       my $lbad=substr($sector,$result+7,12);
       my $lbah=substr($sector,$result+23,8);
       my $lbab=substr($sector,$result+39,20);
+      if(!defined($lbab))
+      {
+        print STDERR "WARNING: Most likely the pagesize is wrong. Please give the pagesize by naming the dump files like mydump(18324p).dmp\n";
+	exit;
+      }
       my $lba=undef;
       #print "Found $char at $result (fulladdress:$fulladdress xorpage:$xorpage blockpage:$blockpage)";
       $lbaD=int($lbad) if($lbad=~m/^(\d+)$/);
@@ -131,6 +148,8 @@ foreach my $fn(@fns)
 
     $pagen++;
     $pageoffset+=$pagesize;
+    print "working ... page $pagen\n" if(($pagen%100000)==0);
+
   }
 
   $stat{"uniqueLBA"}=scalar(keys %lbas);
@@ -163,12 +182,15 @@ foreach my $fn(@fns)
     print OUT $_[2]."<br/>\n";
     print OUT "<table border='1'><tr><th>$_[1]</th><th>delta</th><th>count</th></tr>";
     my $prev=0;
+    my $counter=0;
     foreach(sort numalpha keys %{$_[3]})
     {
       #print "$_: $_[1]{$_}\n";
       $diff=""; $diff="+".($_-$prev) if($_=~m/^\d+$/);
 print OUT "<tr><td>$_</td><td>$diff</td><td>$_[3]{$_}</td></tr>\n";
 $prev=$_;
+      $counter++;
+      print "working ... entry $counter\n" if(($counter%10000)==0);
     }
     print OUT "</table>\n";
   }
