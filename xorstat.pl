@@ -5,6 +5,15 @@ my $help=0;
 my $pagesizeoverride=undef;
 my $xorsize=16; # size of XOR key in pages
 
+# List of the Patterns we have found which DO NOT contain a LBA
+# -> Extract those dumps
+# List of the gaps, sorted by size
+# -> Extract those dumps
+# More descriptions on each page
+# LBAtable -> Page numbers / 
+
+
+
 GetOptions('help|?' =>\$help,
 	   'pagesize=i' =>\$pagesizeoverride,
 	   'xorsize=i' =>\$xorsize
@@ -101,6 +110,9 @@ foreach our $fn(@fns)
   our %stat=(); # global stats
 
   our $pageincreasingerror=0;
+  our $blockincreasingerror=0;
+
+  our $prevblocklba=undef;
 
   while(!$ende)
   {
@@ -112,6 +124,8 @@ foreach our $fn(@fns)
     my $result = index($sector, $char, $offset); # Search for the first sector inside this page
 
     my $prevlba=undef;
+
+    $prevblocklba=undef if(($pagen % $blocksize) ==0);
 
     while ($result != -1) {
 
@@ -143,6 +157,11 @@ foreach our $fn(@fns)
       $lbas{$lba}++ if(defined($lba));
 
       $pageincreasingerror++ if(defined($prevlba) && $lba<$prevlba);
+      $blockincreasingerror++ if(defined($prevblocklba) && $lba<$prevblocklba);
+
+      $prevlba=$lba;
+      $prevblocklba=$lba;
+
 
       $pageoffsets{$result}++;
       $fulloffsets{$fulladdress}++;
@@ -245,12 +264,15 @@ foreach our $fn(@fns)
   open OUT,">$fn.html";
   menu();
   print OUT "<h2 id='FinalStatistic'>Final statistics</h2>\n";
-  print OUT "Filename: $fn<br/>file size: ".byt2gb($fs)."<br/>page size: $pagesize<br/>block size: $bs pages (".($bs*$pagesize)." Bytes)<br/>";
+  print OUT "Filename: $fn<br/>file size: ".byt2gb($fs)."<br/>page size: $pagesize<br/>block size: $blocksize pages (".($blocksize*$pagesize)." Bytes ".byt2gb($blocksize*$pagesize).")<br/>";
+  print OUT "Blocks: ".($fs/$blocksize/$pagesize)."<br/>\n";
   print OUT "Number of unique LBA's found: ".sec2gb($stat{"uniqueLBA"})."<br/>\n";
   print OUT "Lowest LBA found: ".sec2gb($stat{'minlba'})."<br/>\n" if(defined($stat{'minlba'}));
   print OUT "Highes LBA found: ".sec2gb($stat{'maxlba'})."<br/>\n" if(defined($stat{'maxlba'}));
   print OUT "Percentage of LBA's found: ".sprintf("%.4f",100*$stat{'uniqueLBA'}/($stat{'maxlba'}||1))."%<br/>\n";
   print OUT "Number of cases where LBAs are decreasing inside a page: $pageincreasingerror<br/>\n";
+  print OUT "Number of cases where LBAs are decreasing inside a block: $blockincreasingerror<br/>\n";
+
   print OUT "<br/>\n";
 
   print OUT "</body></html>";
