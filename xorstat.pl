@@ -10,11 +10,14 @@ GetOptions('help|?' =>\$help,
 	   'xorsize=i' =>\$xorsize
           );
 
-if($help)
+sub help()
 {
   print "How to use xorstat:\nYou can call xorstat without any arguments, then it will analyze all the .decoded files in the current directory.\nYou can specify single files to be displayed on the commandline.\nParameters:\n  dmpview --max_y=100  -> display only the first 100 pages/records\n  dmpview --max_x=100  -> display only the first 100 bytes/bits of a page\n  dmpview --bw=0  -> display the image as grayscale\n  dmpview --bw=1 -> display the image as black\&white\n";
   exit;
 }
+
+help() if($help);
+
 
 sub mymax($$)
 {
@@ -50,7 +53,9 @@ my @fns=@ARGV;
 @fns= <*.decoded> if(!scalar(@fns));
 @fns= <*.dmp> if(!scalar(@fns));
 
-foreach my $fn(@fns)
+help() if(!scalar(@fns));
+
+foreach our $fn(@fns)
 {
   my $pagesize=512;
   my $blocksize=256;
@@ -95,6 +100,8 @@ foreach my $fn(@fns)
   our %lbas=(); # Which LBA#s were found?
   our %stat=(); # global stats
 
+  our $pageincreasingerror=0;
+
   while(!$ende)
   {
     my $ret=read IN,$sector,$pagesize;
@@ -103,6 +110,8 @@ foreach my $fn(@fns)
     my $offset=0;
 
     my $result = index($sector, $char, $offset); # Search for the first sector inside this page
+
+    my $prevlba=undef;
 
     while ($result != -1) {
 
@@ -132,6 +141,9 @@ foreach my $fn(@fns)
       #print "\n";
 
       $lbas{$lba}++ if(defined($lba));
+
+      $pageincreasingerror++ if(defined($prevlba) && $lba<$prevlba);
+
       $pageoffsets{$result}++;
       $fulloffsets{$fulladdress}++;
       $pages{$pagen}++;
@@ -156,28 +168,25 @@ foreach my $fn(@fns)
 
   sub menu()
   {
-    print OUT "<br/><b>Table of Contents:</b> ";
-    print OUT "<a href='#PageOffsets'>Page Offsets</a> ";
-    print OUT "<a href='#FullOffsets'>Full Offsets</a> ";
-    print OUT "<a href='#XORPages'>XOR Pages</a> ";
-    print OUT "<a href='#BlockPages'>Block Pages</a> ";
-    print OUT "<a href='#Pages'>Pages</a> ";
-    print OUT "<a href='#Statistic'>Statistic</a> ";
-    print OUT "<a href='#LBAtable'>LBA Table</a> ";
-    print OUT "<a href='#FinalStatistic'>Final Statstic</a><br/>\n";
+    print OUT "<html><head><title>$fn</title></head><body>";
+    print OUT "<br/><b>Menu:</b> ";
+    print OUT "<a href='$fn.PageOffsets.html'>Page Offsets</a> ";
+    print OUT "<a href='$fn.FullOffsets.html'>Full Offsets</a> ";
+    print OUT "<a href='$fn.XORPages.html'>XOR Pages</a> ";
+    print OUT "<a href='$fn.BlockPages.html'>Block Pages</a> ";
+    print OUT "<a href='$fn.Pages.html'>Pages</a> ";
+    print OUT "<a href='$fn.Statistic.html'>Statistic</a> ";
+    print OUT "<a href='$fn.LBAtable.html'>LBA Table</a> ";
+    print OUT "<a href='$fn.html'>Final Statstic</a><br/>\n";
     print OUT "<br/>\n";
   }
 
-  open OUT,">$fn.html";
-  print OUT "<html><head><title>$fn</title></head><body>";
-  menu();
-  print OUT "Filename: $fn<br/>file size: $fs<br/>page size: $pagesize<br/>block size: $bs pages (".($bs*$pagesize)." Bytes)<br/>";
-
   sub statdump($$$%)
   {
-    menu();
     print "Dumping $_[0]\n";
     my $id=$_[0]; $id=~s/://; $id=~s/ //g;
+    open OUT,">$fn.$id.html";
+    menu();
     print OUT "<h2 id='$id'>$_[0]</h2>";
     print OUT $_[2]."<br/>\n";
     print OUT "<table border='1'><tr><th>$_[1]</th><th>delta</th><th>count</th></tr>";
@@ -187,12 +196,15 @@ foreach my $fn(@fns)
     {
       #print "$_: $_[1]{$_}\n";
       $diff=""; $diff="+".($_-$prev) if($_=~m/^\d+$/);
-print OUT "<tr><td>$_</td><td>$diff</td><td>$_[3]{$_}</td></tr>\n";
-$prev=$_;
+      print OUT "<tr><td>$_</td><td>$diff</td><td>$_[3]{$_}</td></tr>\n";
+      $prev=$_;
       $counter++;
       print "working ... entry $counter\n" if(($counter%10000)==0);
     }
     print OUT "</table>\n";
+    print OUT "</body></html>";
+
+    close OUT;
   }
 
 
@@ -202,6 +214,9 @@ $prev=$_;
   statdump("Block Pages:","page# inside block2","",\%blockpages);
   statdump("Pages:","page#","",\%pages);
   statdump("Statistic:","info","",\%stat);
+
+  open OUT,">$fn.LBAtable.html";
+  menu();
 
   my $lbasperline=128;
   if(defined($stat{'maxlba'}))
@@ -218,16 +233,25 @@ $prev=$_;
     }
     print OUT "</tr>";
   }
+  else
+  {
+    print OUT "No LBAs were found.\n";
+    print "No LBAs were found.\n";
+  }
   print OUT "</table>";
+  print OUT "</body></html>";
+  close OUT;
 
+  open OUT,">$fn.html";
+  menu();
   print OUT "<h2 id='FinalStatistic'>Final statistics</h2>\n";
   print OUT "Filename: $fn<br/>file size: ".byt2gb($fs)."<br/>page size: $pagesize<br/>block size: $bs pages (".($bs*$pagesize)." Bytes)<br/>";
   print OUT "Number of unique LBA's found: ".sec2gb($stat{"uniqueLBA"})."<br/>\n";
   print OUT "Lowest LBA found: ".sec2gb($stat{'minlba'})."<br/>\n" if(defined($stat{'minlba'}));
   print OUT "Highes LBA found: ".sec2gb($stat{'maxlba'})."<br/>\n" if(defined($stat{'maxlba'}));
   print OUT "Percentage of LBA's found: ".sprintf("%.4f",100*$stat{'uniqueLBA'}/($stat{'maxlba'}||1))."%<br/>\n";
+  print OUT "Number of cases where LBAs are decreasing inside a page: $pageincreasingerror<br/>\n";
   print OUT "<br/>\n";
-  menu();
 
   print OUT "</body></html>";
   close OUT;
