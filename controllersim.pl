@@ -1,5 +1,6 @@
 #!/usr/bin/perl -w
 use strict;
+use List::MoreUtils qw(uniq);
 
 if(scalar(@ARGV)<3)
 {
@@ -16,18 +17,45 @@ my $casefile=$ARGV[2];
 my $pagesize=4000; # Bytes
 my $ecccoverage=1024; # Bytes
 my @datapos=(0,512,1500,2012,3000);
-my $sectors=scalar(@datapos)*512;
+my $datasize=512;
+my $sectors=scalar(@datapos)*$datasize;
 my @sapos=(3512);
+my $sasize=8;
 my @eccpos=(1024,2524);
 my $eccsize=476;
+my $blocksize=$pagesize;
 my $biterrors=10;
+
 
 if(open CASE,"<$casefile")
 {
+  my @mydatapos=();
+  my @myeccpos=();
+  my @mysapos=();
   while(<CASE>)
   {
-    $pagesize=$1 if(m/pagesize:(\d+)/);
+    $pagesize=$1 if(m/<Page_size>(\d+)<\/Page_size>/);
+    $blocksize=$1 if(m/<Nominal_block_size>(\d+)<\/Nominal_block_size>/); # Should we use Nominal or Actual?
+    if(m/<Record StructureDefinitionName="(DA|Data area)" StartAddress="(\d+)" StopAddress="(\d+)" \/>/i)
+    {
+      push @datapos,$1;
+      $datasize=$2-$1+1;
+    }
+    if(m/<Record StructureDefinitionName="ECC" StartAddress="(\d+)" StopAddress="(\d+)" \/>/)
+    {
+      push @eccpos,$1;
+      $eccsize=$2-$1+1;
+    }
+    if(m/<Record StructureDefinitionName="SA" StartAddress="(\d+)" StopAddress="(\d+)" \/>/)
+    {
+      push @sapos,$1;
+      $sasize=$2-$1+1;
+    }
+    @datapos=uniq @mydatapos;
+    @eccpos=uniq @myeccpos;
+    @sapos=uniq @mysapos;
   }
+  $sectors=scalar(@datapos)*$datasize;
   close CASE;
 }
 
@@ -89,6 +117,16 @@ while(!$ende)
   print STDERR "$pagen\n" if(!($pagen %100000));
 
 }
+my $outsize=$pagen*$pagesize;
+
+if(($outsize % $blocksize)>0) # Is the last block filled?
+{
+  my $todo=$blocksize-($outsize % $blocksize);
+  print OUT ' ' x $todo; # Fill the last block
+  $outsize+=$todo;
+  $pagen+=$todo/$pagesize;
+}
+
 close IN;
 close OUT;
 
@@ -96,7 +134,6 @@ my $size=$pagen*$sectors;
 my $nsectors=$size/512;
 print "Input Image Size: $size Bytes ".($size/1000/1000/1000)." GB $nsectors Sectors - $imagefn\n";
 
-my $outsize=$pagen*$pagesize;
 print "Output Dump Size: $outsize Bytes ".($outsize/1000/1000/1000)." GB $pagen Pages with pagesize $pagesize -> $dumpfn\n";
 
 print STDERR "Done.\n";
