@@ -32,7 +32,9 @@ if(open CASE,"<$casefile")
 
 
 open IN,"<$imagefn";
-open OUT,">$dumpfn";
+binmode IN;
+open OUT,">:raw",$dumpfn;
+binmode OUT;
 
 my $ende=0;
 my $pagen=0;
