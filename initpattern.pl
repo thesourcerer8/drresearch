@@ -74,7 +74,7 @@ foreach my $block (0 .. $size/512)
     my $patternpos=$offset % $eccreal;
     my $patternmod=int(($offset % $patternsize)/$eccreal);
     my $bittargetsector=($pattern>>3) >>9;
-    print "\npatternsize: $patternsize\noffset: $offset\npattern: $pattern\npatternpos: $patternpos\nbittargetsector: $bittargetsector\n";
+    #print "\npatternsize: $patternsize\noffset: $offset\npattern: $pattern\npatternpos: $patternpos\nbittargetsector: $bittargetsector\n";
     if($patternpos<($eccreal-1)) 
     {
       $data="0123456789abcdef"x(512/16);
@@ -82,7 +82,7 @@ foreach my $block (0 .. $size/512)
       {
         my $bittargetbyte=($pattern>>3) & 0x1FF;
         my $bittargetbit=$pattern&7;
-        print "bittargetbyte: $bittargetbyte\nbittargetbit: $bittargetbit\n";
+	#print "bittargetbyte: $bittargetbyte\nbittargetbit: $bittargetbit\n";
         substr($data,$bittargetbyte,1)=substr($data,$bittargetbyte,1)^pack("C",(1<<$bittargetbit));
       }
     }
