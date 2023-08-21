@@ -18,7 +18,7 @@ my $ecccoverage=1024; # Bytes
 my @datapos=(0,512,1500,2012,3000);
 my $sectors=scalar(@datapos)*512;
 my @sapos=(3512);
-my @eccpos=(1025,2524);
+my @eccpos=(1024,2524);
 my $eccsize=476;
 my $biterrors=10;
 
