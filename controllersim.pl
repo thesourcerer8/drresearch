@@ -64,7 +64,7 @@ while(!$ende)
   # Fake LDPC block
   foreach my $eccpos(@eccpos)
   {
-    foreach ($eccpos .. $eccpos+$eccsize-1)
+    foreach ($eccpos .. ($eccpos+$eccsize-1))
     {
       substr($out,$_,1)=pack("C",int(rand(256)));
     }
