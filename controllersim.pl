@@ -1,4 +1,5 @@
 #!/usr/bin/perl -w
+use strict;
 
 if(scalar(@ARGV)<3)
 {
@@ -13,11 +14,12 @@ my $dumpfn=$ARGV[1];
 my $casefile=$ARGV[2];
 
 my $pagesize=4000; # Bytes
-my $eccsize=476;
+my $ecccoverage=1024; # Bytes
 my @datapos=(0,512,1500,2012,3000);
 my $sectors=scalar(@datapos)*512;
 my @sapos=(3512);
 my @eccpos=(1025,2524);
+my $eccsize=476;
 my $biterrors=10;
 
 if(open CASE,"<$casefile")
@@ -31,7 +33,7 @@ if(open CASE,"<$casefile")
 
 
 
-open IN,"<$imagefn";
+open IN,"<:raw",$imagefn;
 binmode IN;
 open OUT,">:raw",$dumpfn;
 binmode OUT;
@@ -91,9 +93,10 @@ close IN;
 close OUT;
 
 my $size=$pagen*$sectors;
-print "Input Image Size: $size Bytes ".($size/1000/1000/1000)." GB\n";
+my $nsectors=$size/512;
+print "Input Image Size: $size Bytes ".($size/1000/1000/1000)." GB $nsectors Sectors - $imagefn\n";
 
 my $outsize=$pagen*$pagesize;
-print "Output Dump Size: $outsize Bytes ".($outsize/1000/1000/1000)." GB\n";
+print "Output Dump Size: $outsize Bytes ".($outsize/1000/1000/1000)." GB $pagen Pages with pagesize $pagesize -> $dumpfn\n";
 
 print STDERR "Done.\n";

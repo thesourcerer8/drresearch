@@ -47,6 +47,10 @@ if($overwritten)
   {
     my $data=sprintf("|Block#%012d (0x%08X) Byte: %020d Pos: %10d MB\n***OVERWRITTEN",$block,$block,$block*512,$block>>11);
     $data.= "x"x(510-length($data))."\n\x00";
+    if(length($data)!=512)
+    {
+      print STDERR "WARNING: sector size is wrong in overwritten\n";
+    }
     print OUT $data;
     my $percent=int(100*$block/$nblocks);
     print STDERR "$block $percent\%\n" if(!($block %100000));
@@ -83,7 +87,10 @@ foreach my $block (0 .. $size/512)
       }
     }
   }
-
+  if(length($data)!=512)
+  {
+    print STDERR "WARNING: sector size is wrong in new pattern\n";
+  }
   print OUT $data;
   my $percent=int(100*$block/$nblocks);
   print STDERR "$block $percent\%\n" if(!($block %100000));
