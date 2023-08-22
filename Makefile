@@ -6,3 +6,4 @@ initpattern.exe: initpattern.cpp
 test:
 	perl initpattern.pl test.dump 3000
 	perl controllersim.pl test.dump simp.dump 3000.case
+	perl dumpextractrelevant.pl simp.dump upload.dump 4000
