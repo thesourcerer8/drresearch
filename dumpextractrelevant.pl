@@ -53,6 +53,7 @@ while(!$ende)
   my $sector=$in;
 
     my $offset=0;
+    my $isgood=0;
 
     my $result = index($sector, $char, $offset); # Search for the first sector inside this page
 
@@ -83,9 +84,7 @@ while(!$ende)
       
       if(defined($lba) && $lba>=$eccstart && $lba<=$eccend)
       {
-        print OUT $in;
-        $outpages++;
-
+        $isgood=1;	      
       }
 
 
@@ -93,6 +92,11 @@ while(!$ende)
       $result = index($sector, $char, $offset);
 
     }
+  if($isgood)
+  {
+    print OUT $in;
+    $outpages++;
+  }
 
   $pagen++;
   print STDERR "$pagen pages processed\n" if(!($pagen %100000));
