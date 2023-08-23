@@ -23,7 +23,7 @@ if(open XML,"<$ARGV[2]")
 {
   while(<XML>)
   {
-    if(m/<pattern type='ECC' begin='(\d+)' end='(\d+)' size='\d+'\/>/)
+    if(m/<pattern type='ECC' begin='(\d+)' end='(\d+)' size='\d+'/)
     {
       $eccstart=$1;
       $eccend=$2;
