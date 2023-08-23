@@ -16,7 +16,7 @@ my $casefile=$ARGV[2];
 
 my $pagesize=4000; # Bytes
 my $ecccoverage=1024; # Bytes
-my @datapos=(0,512,1500,2012,3000);
+my @datapos=(0,512,1500,2012);
 my $datasize=512;
 my $sectors=scalar(@datapos)*$datasize;
 my @sapos=(3512);
