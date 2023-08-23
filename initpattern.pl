@@ -36,7 +36,7 @@ else
   $overwritten=1;
 }
 
-print XML "<root>\n<device>$ARGV[0]</device>\n<pattern type='sectornumber' begin='0' end='".($border0-1)."' size='".($border0)."'/>\n<pattern type='XOR-00' begin='$border0' end='".($border7-1)."' size='".($border7-$border0)."'/>\n<pattern type='XOR-77' begin='$border7' end='".($borderf-1)."' size='".($borderf-$border7)."'/>\n<pattern type='XOR-FF' begin='$borderf' end='".($borderphi-1)."' size='".($borderphi-$borderf)."'/>\n<pattern type='ECC' begin='$borderphi' end='".($borderecc-1)."' size='".($borderecc-$borderphi)."'/>\n<pattern type='sectornumber' begin='$borderecc' end='".(int($size/512)-1)."' size='".(int($size/512)-$borderecc)."'/>\n</root>\n";
+print XML "<root overwritten='$overwritten'>\n<device>$ARGV[0]</device>\n<pattern type='sectornumber' begin='0' end='".($border0-1)."' size='".($border0)."'/>\n<pattern type='XOR-00' begin='$border0' end='".($border7-1)."' size='".($border7-$border0)."'/>\n<pattern type='XOR-77' begin='$border7' end='".($borderf-1)."' size='".($borderf-$border7)."'/>\n<pattern type='XOR-FF' begin='$borderf' end='".($borderphi-1)."' size='".($borderphi-$borderf)."'/>\n<pattern type='ECC' begin='$borderphi' end='".($borderecc-1)."' size='".($borderecc-$borderphi)."' coverage='$DATAsize' majority='$majority'/>\n<pattern type='sectornumber' begin='$borderecc' end='".(int($size/512)-1)."' size='".(int($size/512)-$borderecc)."'/>\n</root>\n";
 
 print "Size: $size Bytes ".($size/1000/1000/1000)." GB\n";
 my $nblocks=$size/512;
@@ -95,6 +95,7 @@ foreach my $block (0 .. $size/512)
   my $percent=int(100*$block/$nblocks);
   print STDERR "$block $percent\%\n" if(!($block %100000));
 }
+
 close OUT;
 close XML;
 print STDERR "Pattern has been written to device/file $mydev\n";
