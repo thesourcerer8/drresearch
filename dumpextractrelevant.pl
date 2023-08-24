@@ -82,7 +82,7 @@ while(!$ende)
       #print "\n";
       #
       
-      if(defined($lba) && $lba>=$eccstart && $lba<=$eccend)
+      if(defined($lba) && $lba>=$eccstart-1 && $lba<=$eccend)
       {
         $isgood=1;	      
       }
