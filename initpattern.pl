@@ -77,7 +77,7 @@ foreach my $block (0 .. $size/512)
     #print "\npatternsize: $patternsize\noffset: $offset\npattern: $pattern\npatternpos: $patternpos\nbittargetsector: $bittargetsector\n";
     if($patternpos<($eccreal-1)) 
     {
-      $data="0123456789abcdef"x(512/16);
+      $data="\x00" x 512; #"0123456789abcdef"x(512/16);
       if($bittargetsector==$patternpos && $patternmod)
       {
         my $bittargetbyte=($pattern>>3) & 0x1FF;
