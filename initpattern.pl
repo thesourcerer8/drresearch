@@ -19,13 +19,17 @@ my $borderf=1280*1024*2; # 256 MB 77
 my $borderphi=1536*1024*2; # 256 MB FF
 my $DATAsize=1024;
 my $eccreal=($DATAsize/512)+1;
-my $majority=5;
-my $borderecc=$borderphi+$eccreal*$eccreal*$majority*$DATAsize*8; # lots of ECC
+my $majority=7;
+my $borderecc=$borderphi+$eccreal*$eccreal*$majority*$DATAsize*8+1; # lots of ECC
 my $overwritten=1;
 
 if($ARGV[1])
 {
   $size=$ARGV[1]*1024*1024;
+  if($size<$borderecc*512)
+  {
+    print "WARNING: Not all of the pattern will be in the dump! Enlarge the dump size or change the dump configuration\n";
+  }
   $overwritten=0;
 }
 else
@@ -72,13 +76,13 @@ foreach my $block (0 .. $size/512)
     my $offset=$block-$borderphi;
     my $pattern=int($offset/$patternsize); # 0 .. DATAsize*8
     my $patternpos=$offset % $eccreal;
-    my $patternmod=int(($offset % $patternsize)/$eccreal);
+    my $patternmod=int(($offset % ($eccreal*$eccreal))/$eccreal);
     my $bittargetsector=($pattern>>3) >>9;
     #print "\npatternsize: $patternsize\noffset: $offset\npattern: $pattern\npatternpos: $patternpos\nbittargetsector: $bittargetsector\n";
-    if($patternpos<($eccreal-1)) 
+    if($patternpos>0)
     {
       $data="\x00" x 512; #"0123456789abcdef"x(512/16);
-      if($bittargetsector==$patternpos && $patternmod)
+      if($bittargetsector==($patternpos-1) && $patternmod)
       {
         my $bittargetbyte=($pattern>>3) & 0x1FF;
         my $bittargetbit=$pattern&7;
