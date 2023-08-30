@@ -18,15 +18,17 @@ my $pagesize=4000; # Bytes
 my $eccstart=3145728;
 my $eccend=3514367;
 $pagesize=$1 if($ARGV[2]=~m/^(\d+)$/);
+my $ecccoverage=1024;
 
 if(open XML,"<$ARGV[2]")
 {
   while(<XML>)
   {
-    if(m/<pattern type='ECC' begin='(\d+)' end='(\d+)' size='\d+'/)
+    if(m/<pattern type='ECC' begin='(\d+)' end='(\d+)' size='\d+' coverage='(\d+)'/)
     {
       $eccstart=$1;
       $eccend=$2;
+      $ecccoverage=$3;
     }
   }
   close XML;
@@ -42,7 +44,34 @@ my $ende=0;
 my $pagen=0;
 my $outpages=0;
 
-my $char = '|Block#';
+my $char1 = '|Block#';
+my $char2 = "xxxxx\x0a\x00";
+
+
+my %posfound=();
+my %lbafound=();
+
+sub fixdecimal($) # Fixes up to 3 bit errors
+{
+  my $str=$_[0];
+  my $count=($str=~tr/[0-9]//);
+  return $_[0] if($count==length($_[0]));
+  if($count<length($_[0]) && $count>length($_[0])-3)
+  {
+    #print "Trying to fix $_[0]\n";
+    my $d=$_[0];
+    foreach(0 .. length($d)-1)
+    {
+      substr($d,$_,1)=pack("C",(unpack("C",substr($d,$_,1))&0xf|0x30));
+    }
+    return $d;
+  }
+  return $_[0];
+}
+
+#print fixdecimal("0123456789")."\n";
+#print fixdecimal("012345v789")."\n";
+
 
 
 while(!$ende)
@@ -55,13 +84,26 @@ while(!$ende)
     my $offset=0;
     my $isgood=0;
 
-    my $result = index($sector, $char, $offset); # Search for the first sector inside this page
-
+    my $result = index($sector, $char1, $offset); # Search for the first sector inside this page
     while ($result != -1) {
+      $posfound{$result}=1;
+      $offset = $result + 1; # Where to search for the next sector inside this page?
+      $result = index($sector, $char1, $offset);
+    }
 
-      my $lbad=substr($sector,$result+7,12);
+    $offset=0;
+    $result = index($sector, $char2, $offset); # Search for the first sector inside this page
+    while ($result != -1) {
+      $posfound{$result-512+7}=1;
+      $offset = $result + 1; # Where to search for the next sector inside this page?
+      $result = index($sector, $char2, $offset);
+    }
+
+    foreach my $result (sort keys %posfound)
+    {
+      my $lbad=fixdecimal(substr($sector,$result+7,12));
       my $lbah=substr($sector,$result+23,8);
-      my $lbab=substr($sector,$result+39,20);
+      my $lbab=fixdecimal(substr($sector,$result+39,20));
       if(!defined($lbab))
       {
         print STDERR "WARNING: Most likely the pagesize is wrong. Please give the pagesize by naming the dump files like mydump(18324p).dmp\n";
@@ -80,18 +122,23 @@ while(!$ende)
       #print " LBA:$lba" if(defined($lba));
       #print " LBAd:$lbad($lbaD) LBAh:$lbah($lbaH) LBAb:$lbab($lbaB)" if(defined($lba));
       #print "\n";
-      #
-      
-      if(defined($lba) && $lba>=$eccstart-1 && $lba<=$eccend)
+
+      if(defined($lbaD) && $lbaD>=$eccstart-1 && $lbaD<=$eccend)
       {
-        $isgood=1;	      
+        $isgood=1;
+	$lbafound{$lbaD}++;
       }
-
-
-      $offset = $result + 1; # Where to search for the next sector inside this page?
-      $result = index($sector, $char, $offset);
-
-    }
+      if(defined($lbaB) && $lbaB>=$eccstart-1 && $lbaB<=$eccend)
+      {
+        $isgood=1;
+	$lbafound{$lbaB}++;
+      }
+      if(defined($lbaH) && $lbaH>=$eccstart-1 && $lbaH<=$eccend)
+      {
+        $isgood=1;
+	$lbafound{$lbaH}++;
+      }
+  }
   if($isgood)
   {
     print OUT $in;
@@ -109,5 +156,20 @@ my $outsize=$outpages*$pagesize;
 my $size=$pagen*$pagesize;
 print "Input Image Size: $size Bytes ".($size/1000/1000/1000)." GB $pagen pages with pagesize $pagesize - $imagefn\n";
 print "Output Dump Size: $outsize Bytes ".($outsize/1000/1000/1000)." GB $outpages Pages with pagesize $pagesize -> $dumpfn\n";
+
+my $missing=0;
+my $found=0;
+my $inc=($ecccoverage/512)+1;
+print "Inc: $inc\n";
+my @missings=();
+for(my $lba=$eccstart; $lba<=$eccend; $lba+=$inc)
+{
+  $missing++ if(!defined($lbafound{$lba}));
+  $found++ if(defined($lbafound{$lba}));
+  push @missings,$lba if(!defined($lbafound{$lba}));
+}
+my $percent=($found+$missing)?int(100*$found/($found+$missing)) : 0;
+print "Found: $found Missing: $missing => $percent % found\n";
+print "Missing: ".join(",",@missings)."\n" if($missing);
 
 print STDERR "Done.\n";
