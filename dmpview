@@ -25,6 +25,7 @@ foreach my $fn(@fns)
 
   my $pagesize=512; 
   $pagesize=$1 if($fn=~m/\((\d+)[bp].*?\)/);
+  $pagesize=$1/8 if($fn=~m/_m(\d+)[_\.]/);
   $pagesize=$1*1024 if($fn=~m/\((\d+)[kK].*?\)/);
 
   my $fs=-s $fn;
