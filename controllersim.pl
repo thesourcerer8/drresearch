@@ -14,10 +14,50 @@ my $imagefn=$ARGV[0];
 my $dumpfn=$ARGV[1];
 my $casefile=$ARGV[2];
 
+
+if(scalar(@ARGV)==5 && $ARGV[3] eq "-j")
+{
+  foreach(0 .. $ARGV[4]-1)
+  {
+    unlink "$_.done";
+    system "perl \"$0\" \"$ARGV[0]\" \"$ARGV[1].$_\" \"$ARGV[2]\" \"$ARGV[3]\" \"$ARGV[4]\" $_ &";
+   }
+  my $done=0;
+  while(!$done)
+  {
+    $done=1;
+    foreach(0 .. $ARGV[4]-1)
+    {
+      $done=0 if(!-f "$_.done");
+    }
+  }
+  print "All jobs are done!\n";
+  my @dumps=();
+  foreach(0 .. $ARGV[4]-1)
+  {
+    unlink "$_.done";
+    push @dumps,"$dumpfn.$_";
+  }
+  my $cmd="cat \"".join("\" \"",@dumps)."\" >\"$dumpfn\"";
+  print "$cmd\n";
+  system($cmd);
+  print "$dumpfn written.\n";
+  exit;
+}
+our $totalshares=1;
+our $thisshare=0;
+if(scalar(@ARGV)==6 && $ARGV[3] eq "-j")
+{
+  $totalshares=$ARGV[4];
+  $thisshare=$ARGV[5];
+}
+
+
+
 my $pagesize=4000; # Bytes
 my $ecccoverage=1024; # Bytes
-my @datapos=(0,512,1500,2012);
-my $datasize=512;
+my @datapos=(0,1500);
+my $datasize=1024;
 my $sectors=scalar(@datapos)*$datasize;
 my @sapos=(3512);
 my $sasize=8;
@@ -25,10 +65,71 @@ my @eccpos=(1024,2524);
 my $eccsize=476;
 my $blocksize=$pagesize;
 my $biterrors=10;
+my $eccmode="LDPC";
+
+our @ldpckey=();
+sub ldpcauto($$) # Encoder
+{
+  my $k=$_[0]; #1024*8; # DATA
+  my $m=$_[1]; #476*8; #ECC
+  my $n=$k+$m;
+  my $m8=$m/8;
+  my $fn="gmatrix_n$n"."_k$k"."_m$m.g";
+  my @arr=();
+  if(-f $fn)
+  {
+    open KEYIN,"<$fn";
+    foreach(0 .. $k-1)
+    {
+      my $content="";
+      read KEYIN,$content,$m8;
+      push @arr,$content;
+    }
+  }
+  else
+  {
+    open OUT,">$fn";
+    binmode OUT;
+    foreach (0 .. $k-1)
+    {
+      my $v="";
+      foreach (0 .. $m8-1)
+      {
+	$v.=pack("C",1 << int(rand(8)));
+      }
+      push @arr,$v;
+      print OUT $v;
+    }
+    close OUT;
+  }
+  return(@arr);
+}
+
+sub ldpcencode($)
+{
+  my $output="\x00" x length($ldpckey[0]);
+  foreach my $byte(0 .. length($_[0])-1)
+  {
+    my $bytev=unpack("C",substr($_[0],$byte,1));
+    foreach my $bit(0 .. 7)
+    {
+      $output^=$ldpckey[($byte<<3)+$bit] if($bytev & (1<<$bit));
+    }
+  }
+  return $output;
+}
+
+sub cutpad($$)
+{
+  my $d=substr($_[0],0,length($_[0])>$_[1]?$_[1]:length($_[0]));
+  $d.= "\x00" x ($_[1]-length($d));
+  return $d;
+}
 
 
 if(open CASE,"<$casefile")
 {
+  print "Reading from $casefile\n";
   my @mydatapos=();
   my @myeccpos=();
   my @mysapos=();
@@ -38,17 +139,19 @@ if(open CASE,"<$casefile")
     $blocksize=$1 if(m/<Nominal_block_size>(\d+)<\/Nominal_block_size>/); # Should we use Nominal or Actual?
     if(m/<Record StructureDefinitionName="(DA|Data area)" StartAddress="(\d+)" StopAddress="(\d+)" \/>/i)
     {
-      push @datapos,$1;
-      $datasize=$2-$1+1;
+      print "Adding $2 to datapos\n";
+      push @mydatapos,$2;
+      $datasize=$3-$2+1;
+      $ecccoverage=$datasize;
     }
     if(m/<Record StructureDefinitionName="ECC" StartAddress="(\d+)" StopAddress="(\d+)" \/>/)
     {
-      push @eccpos,$1;
+      push @myeccpos,$1;
       $eccsize=$2-$1+1;
     }
     if(m/<Record StructureDefinitionName="SA" StartAddress="(\d+)" StopAddress="(\d+)" \/>/)
     {
-      push @sapos,$1;
+      push @mysapos,$1;
       $sasize=$2-$1+1;
     }
     @datapos=uniq @mydatapos;
@@ -59,6 +162,8 @@ if(open CASE,"<$casefile")
   close CASE;
 }
 
+print "Pagesize: $pagesize\n";
+print "Datapos: ".join(",",@datapos)."\n";
 
 
 open(IN,"<:raw",$imagefn) || die "Could not open image file $imagefn for reading: $!\n";
@@ -69,11 +174,21 @@ binmode OUT;
 my $ende=0;
 my $pagen=0;
 
+@ldpckey=ldpcauto($ecccoverage*8,$eccsize*8);
+#print "LDPCKEY: ".scalar(@ldpckey)." ".length($ldpckey[0])."\n";
+
 while(!$ende)
 {
   my $in="";
   my $read=read IN,$in,$sectors;
   last if(!defined($read) || !$read);
+
+  if($pagen%$totalshares!=$thisshare)
+  {
+    $pagen++;
+    next;
+  }
+
   $in.="\xff" x ($sectors-$read);
   my $out="\xff" x $pagesize;
 
@@ -81,20 +196,33 @@ while(!$ende)
   my $sectorpos=0;
   foreach(@datapos)
   {
-    substr($out,$_,512)=substr($in,$sectorpos,512);
-    $sectorpos+=512;
+    substr($out,$_,$datasize)=substr($in,$sectorpos,$datasize);
+    $sectorpos+=$datasize;
   }
   # Fill SA blocks
   foreach(@sapos)
   {
-    substr($out,$_,8)=pack("Q",$pagen);
+    substr($out,$_,$sasize)=cutpad(pack("Q",$pagen),$sasize);
   }
   # Fake LDPC block
-  foreach my $eccpos(@eccpos)
+  foreach my $eccnum(0 .. $#eccpos)
   {
-    foreach ($eccpos .. ($eccpos+$eccsize-1))
+    my $eccpos=$eccpos[$eccnum];
+    my $datapos=$datapos[$eccnum];
+    if($eccmode eq "RANDOM")
     {
-      substr($out,$_,1)=pack("C",int(rand(256)));
+      foreach ($eccpos .. ($eccpos+$eccsize-1))
+      {
+        substr($out,$_,1)=pack("C",int(rand(256)));
+      }
+    }
+    elsif($eccmode eq "LDPC")
+    {
+      substr($out,$eccpos,$eccsize)=ldpcencode(substr($out,$datapos,$ecccoverage));
+    }
+    elsif($eccmode eq "BCH")
+    {
+      # to be implemented
     }
   }
 
@@ -114,7 +242,7 @@ while(!$ende)
   print OUT $out;
 
   $pagen++;
-  print STDERR "$pagen\n" if(!($pagen %100000));
+  print STDERR "$pagen\n" if(!($pagen %10000));
 
 }
 my $outsize=$pagen*$pagesize;
@@ -135,5 +263,12 @@ my $nsectors=$size/512;
 print "Input Image Size: $size Bytes ".($size/1000/1000/1000)." GB $nsectors Sectors - $imagefn\n";
 
 print "Output Dump Size: $outsize Bytes ".($outsize/1000/1000/1000)." GB $pagen Pages with pagesize $pagesize -> $dumpfn\n";
+
+if(scalar(@ARGV)==6 && $ARGV[3] eq "-j")
+{
+  open OUT,">$ARGV[5].done";
+  print OUT "done";
+  close OUT;
+}
 
 print STDERR "Done.\n";
