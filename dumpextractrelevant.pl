@@ -10,13 +10,16 @@ if(scalar(@ARGV)<3)
   exit;
 }
 
+
 my $imagefn=$ARGV[0];
 my $dumpfn=$ARGV[1];
 my $patternxmlfn=$ARGV[2];
 
+print "Extracting all relevant pages from a dump file \"$imagefn\" into an output dump \"$dumpfn\"\n";
+
 my $pagesize=4000; # Bytes
 my $eccstart=3145728;
-my $eccend=3514367;
+my $eccend=3614367;
 $pagesize=$1 if($ARGV[2]=~m/^(\d+)$/);
 my $ecccoverage=1024;
 
@@ -26,6 +29,7 @@ if(open XML,"<$ARGV[2]")
   {
     if(m/<pattern type='ECC' begin='(\d+)' end='(\d+)' size='\d+' coverage='(\d+)'/)
     {
+      print "Loading pattern configuration from $ARGV[2]\n";	    
       $eccstart=$1;
       $eccend=$2;
       $ecccoverage=$3;
@@ -33,6 +37,8 @@ if(open XML,"<$ARGV[2]")
   }
   close XML;
 }
+
+print "Final configuration used:\nECC-start: Sector $eccstart\nECC-end: Sector $eccend\nECC-coverage: $ecccoverage Bytes\n";
 
 
 open(IN,"<:raw",$imagefn) || die "Could not open dump file $imagefn for reading: $!\n";
@@ -81,68 +87,81 @@ while(!$ende)
   last if(!defined($read) || !$read);
   my $sector=$in;
 
-    my $offset=0;
-    my $isgood=0;
+  my $offset=0;
+  my $isgood=0;
 
-    my $result = index($sector, $char1, $offset); # Search for the first sector inside this page
-    while ($result != -1) {
-      $posfound{$result}=1;
-      $offset = $result + 1; # Where to search for the next sector inside this page?
-      $result = index($sector, $char1, $offset);
-    }
-
-    $offset=0;
-    $result = index($sector, $char2, $offset); # Search for the first sector inside this page
-    while ($result != -1) {
-      $posfound{$result-512+7}=1;
-      $offset = $result + 1; # Where to search for the next sector inside this page?
-      $result = index($sector, $char2, $offset);
-    }
-
-    foreach my $result (sort keys %posfound)
-    {
-      my $lbad=fixdecimal(substr($sector,$result+7,12));
-      my $lbah=substr($sector,$result+23,8);
-      my $lbab=fixdecimal(substr($sector,$result+39,20));
-      if(!defined($lbab))
-      {
-        print STDERR "WARNING: Most likely the pagesize is wrong. Please give the pagesize by naming the dump files like mydump(18324p).dmp\n";
-	exit;
-      }
-      my $lba=undef;
-      #print "Found $char at $result (fulladdress:$fulladdress xorpage:$xorpage blockpage:$blockpage)";
-      my $lbaD=int($lbad) if($lbad=~m/^(\d+)$/);
-      my $lbaH=hex("0x".$lbah) if($lbah=~m/^([0-9a-fA-F]+)$/);
-      my $lbaB=int($lbab/512) if($lbab=~m/^(\d+)$/);
-      # Majority-Voting on the LBA address
-      $lba=$lbaD if(defined($lbaD) && defined($lbaH) && $lbaD == $lbaH);
-      $lba=$lbaD if(defined($lbaD) && defined($lbaB) && $lbaD == $lbaB);
-      $lba=$lbaH if(defined($lbaH) && defined($lbaB) && $lbaH == $lbaB);
-
-      #print " LBA:$lba" if(defined($lba));
-      #print " LBAd:$lbad($lbaD) LBAh:$lbah($lbaH) LBAb:$lbab($lbaB)" if(defined($lba));
-      #print "\n";
-
-      if(defined($lbaD) && $lbaD>=$eccstart-1 && $lbaD<=$eccend)
-      {
-        $isgood=1;
-	$lbafound{$lbaD}++;
-      }
-      if(defined($lbaB) && $lbaB>=$eccstart-1 && $lbaB<=$eccend)
-      {
-        $isgood=1;
-	$lbafound{$lbaB}++;
-      }
-      if(defined($lbaH) && $lbaH>=$eccstart-1 && $lbaH<=$eccend)
-      {
-        $isgood=1;
-	$lbafound{$lbaH}++;
-      }
+  my $result = index($sector, $char1, $offset); # Search for the first sector inside this page
+  while ($result != -1) 
+  {
+    $posfound{$result}=1;
+    $offset = $result + 1; # Where to search for the next sector inside this page?
+    $result = index($sector, $char1, $offset);
   }
+
+  $offset=0;
+  $result = index($sector, $char2, $offset); # Search for the first sector inside this page
+  while ($result != -1) 
+  {
+    $posfound{$result-512+7}=1;
+    $offset = $result + 1; # Where to search for the next sector inside this page?
+    $result = index($sector, $char2, $offset);
+  }
+
+  foreach my $result (sort keys %posfound)
+  {
+    my $lbad=fixdecimal(substr($sector,$result+7,12));
+    my $lbah=substr($sector,$result+23,8);
+    my $lbab=fixdecimal(substr($sector,$result+39,20));
+    if(!defined($lbab))
+    {
+      print STDERR "WARNING: Most likely the pagesize is wrong. Please give the pagesize by naming the dump files like mydump(18324p).dmp\n";
+	exit;
+    }
+    my $lba=undef;
+    #print "Found $char at $result (fulladdress:$fulladdress xorpage:$xorpage blockpage:$blockpage)";
+    my $lbaD=int($lbad) if($lbad=~m/^(\d+)$/);
+    my $lbaH=hex("0x".$lbah) if($lbah=~m/^([0-9a-fA-F]+)$/);
+    my $lbaB=int($lbab/512) if($lbab=~m/^(\d+)$/);
+    # Majority-Voting on the LBA address
+    $lba=$lbaD if(defined($lbaD) && defined($lbaH) && $lbaD == $lbaH);
+    $lba=$lbaD if(defined($lbaD) && defined($lbaB) && $lbaD == $lbaB);
+    $lba=$lbaH if(defined($lbaH) && defined($lbaB) && $lbaH == $lbaB);
+
+    #print " LBA:$lba" if(defined($lba));
+    #print " LBAd:$lbad($lbaD) LBAh:$lbah($lbaH) LBAb:$lbab($lbaB)" if(defined($lba));
+    #print "\n";
+
+    if(defined($lbaD) && $lbaD>=$eccstart && $lbaD<=$eccend)
+    {
+      $isgood=1;
+      $lbafound{$lbaD}++;
+    }
+    if(defined($lbaB) && $lbaB>=$eccstart && $lbaB<=$eccend)
+    {
+      $isgood=1;
+      $lbafound{$lbaB}++;
+    }
+    if(defined($lbaH) && $lbaH>=$eccstart && $lbaH<=$eccend)
+    {
+      $isgood=1;
+      $lbafound{$lbaH}++;
+    }
+    #if($in=~m/1874827776/)
+    #{
+    #  print "Found 1874827776 D:$lbaD H:$lbaH B:$lbaB isgood:$isgood $eccstart $eccend\n" ;
+    #  open DEB,">187.dat";
+    #  binmode DEB;
+    #  print DEB $in;
+    #  close DEB;
+    #}
+  }
+  #print "Found 1874827776\n" if($in=~m/1874827776/);
+
   if($isgood)
   {
     print OUT $in;
     $outpages++;
+    #print "Writing 1874827776\n" if($in=~m/1874827776/);
   }
 
   $pagen++;
@@ -169,7 +188,8 @@ for(my $lba=$eccstart; $lba<=$eccend; $lba+=$inc)
   push @missings,$lba if(!defined($lbafound{$lba}));
 }
 my $percent=($found+$missing)?int(100*$found/($found+$missing)) : 0;
-print "Found: $found Missing: $missing => $percent % found\n";
+print "Found: $found Missing: $missing => $percent % found (Range searched: $eccstart..$eccend inc $inc)\n";
 print "Missing: ".join(",",@missings)."\n" if($missing);
 
+print "Page Offsets for DATA: ".join(",",sort keys(%posfound))."\n";
 print STDERR "Done.\n";
