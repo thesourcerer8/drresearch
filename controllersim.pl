@@ -166,6 +166,9 @@ print "Pagesize: $pagesize\n";
 print "Datapos: ".join(",",@datapos)."\n";
 
 
+$biterrors=1 if($pagesize<100);
+
+
 open(IN,"<:raw",$imagefn) || die "Could not open image file $imagefn for reading: $!\n";
 binmode IN;
 open(OUT,">:raw",$dumpfn) || die "Could not open dump file $dumpfn for writing: $!\n";
