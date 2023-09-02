@@ -34,7 +34,7 @@ foreach my $fn(@fns)
 
   $maxy=$bs if($maxy<0);
 
-  print "Filename: $fn\nfile size: $fs\npage size: $pagesize\nblock size: $bs\n";
+  #  print "Filename: $fn\nfile size: $fs\npage size: $pagesize\nblock size: $bs\n";
   print "Warning: There is a rest at the end of the file: $rest Bytes (please check the pagesize!)\n" if($rest);
 
   $pagesize*=8 if($bw);
