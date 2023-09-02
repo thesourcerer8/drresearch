@@ -31,4 +31,9 @@ inc/
 /Makefile.old
 /MANIFEST.bak
 /pm_to_blib
+
+#ZIP
 /*.zip
+
+#Python
+__pycache__/
