@@ -44,10 +44,10 @@ with open(inputdump,"rb") as dump:
 		while dump:
 			page = bytearray(dump.read(pagesize))
 			for pos in dataeccpos:
-				x = np.unpackbits(np.frombuffer(page[pos:pos+datasize+eccsize],dtype=np.uint8),axis=None).astype(np.float32)
-				print("x: "+str(x))
+				x = np.unpackbits(np.frombuffer(page[pos:pos+datasize+eccsize],dtype=np.uint8),axis=None,bitorder='little').astype(np.float32)
+				#print("x: "+str(x))
 				r = 2*x-1
-				print("r: "+str(r))
+				#print("r: "+str(r))
 				#print("H: "+str(H))
 				decoder = LDPCdecoder.decoder(H)
 				#print("r: "+str(r))
@@ -74,10 +74,10 @@ with open(inputdump,"rb") as dump:
 		
 				ErrorSPA = np.sum(y != x)
 				print("Iterations:  %d  |  Amount of Bit Errors (SPA) : %d " % (n, ErrorSPA))
-				print("he")
-				print(y)
+				#print("he")
+				#print(y)
 				#print("Original:")
 				#print(u)
-				page[pos:pos+datasize+eccsize]=np.packbits(decoded,axis=None).tobytes()
+				page[pos:pos+datasize+eccsize]=np.packbits(decoded,axis=None,bitorder='little').tobytes()
 			output.write(page)
 		
