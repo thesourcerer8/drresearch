@@ -10,6 +10,7 @@ if(scalar(@ARGV)<3)
   exit;
 }
 
+my $debug=0;
 my $imagefn=$ARGV[0];
 my $dumpfn=$ARGV[1];
 my $casefile=$ARGV[2];
@@ -126,6 +127,22 @@ sub cutpad($$)
   return $d;
 }
 
+sub numpyarr($)
+{
+  my $d="[";
+  foreach(my $i=0;$i<length($_[0]);$i++)
+  {
+    my $v=unpack("C",substr($_[0],$i,1));
+    foreach(0 .. 7)
+    {
+      $d.=(($v>>$_)&1).",";
+    }
+  }
+  chomp $d;
+  $d.="]";
+  return $d;
+}
+
 
 if(open CASE,"<$casefile")
 {
@@ -222,6 +239,13 @@ while(!$ende)
     elsif($eccmode eq "LDPC")
     {
       substr($out,$eccpos,$eccsize)=ldpcencode(substr($out,$datapos,$ecccoverage));
+      if($debug && !$pagen)
+      {
+        open DECT,">decoder.test";
+        print DECT "u = ".numpyarr(substr($out,$datapos,$ecccoverage))."\n";
+	print DECT "x = ".numpyarr(substr($out,$eccpos,$eccsize))."\n";
+	close DECT;
+      }
     }
     elsif($eccmode eq "BCH")
     {
