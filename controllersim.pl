@@ -4,7 +4,7 @@ use List::MoreUtils qw(uniq);
 
 if(scalar(@ARGV)<3)
 {
-  print "Usage: $0 <imagefile.img> <dumpfile.dump> <.case>\n";
+  print "Usage: $0 <imagefile.img> <dumpfilewithbiterrors.dump> <dumpfilewithoutbiterrors.dump> <.case>\n";
   print "Simulates writing an image file through a pendrive controller to a NAND flash, doing chip-off and dumping it\n";
   print "You can pass it a .case file for replicating the geometry\n";
   exit;
@@ -13,44 +13,50 @@ if(scalar(@ARGV)<3)
 my $debug=0;
 my $imagefn=$ARGV[0];
 my $dumpfn=$ARGV[1];
-my $casefile=$ARGV[2];
+my $cleanfn=$ARGV[2];
+my $casefile=$ARGV[3];
 
 
-if(scalar(@ARGV)==5 && $ARGV[3] eq "-j")
+if(scalar(@ARGV)==6 && $ARGV[4] eq "-j")
 {
-  foreach(0 .. $ARGV[4]-1)
+  foreach(0 .. $ARGV[5]-1)
   {
     unlink "$_.done";
-    system "perl \"$0\" \"$ARGV[0]\" \"$ARGV[1].$_\" \"$ARGV[2]\" \"$ARGV[3]\" \"$ARGV[4]\" $_ &";
+    system "perl \"$0\" \"$ARGV[0]\" \"$ARGV[1].$_\" \"$ARGV[2].$_\" \"$ARGV[3]\" \"$ARGV[4]\" \"$ARGV[5]\" $_ &";
    }
   my $done=0;
   while(!$done)
   {
     $done=1;
-    foreach(0 .. $ARGV[4]-1)
+    foreach(0 .. $ARGV[5]-1)
     {
       $done=0 if(!-f "$_.done");
     }
   }
   print "All jobs are done!\n";
   my @dumps=();
-  foreach(0 .. $ARGV[4]-1)
+  my @cleans=();
+  foreach(0 .. $ARGV[5]-1)
   {
     unlink "$_.done";
     push @dumps,"$dumpfn.$_";
+    push @cleans,"$cleanfn.$_";
   }
   my $cmd="cat \"".join("\" \"",@dumps)."\" >\"$dumpfn\"";
   print "$cmd\n";
   system($cmd);
-  print "$dumpfn written.\n";
+  my $cmd2="cat \"".join("\" \"",@cleans)."\" >\"$cleanfn\"";
+  print "$cmd2\n";
+  system($cmd2);
+  print "$dumpfn and $cleanfn written.\n";
   exit;
 }
 our $totalshares=1;
 our $thisshare=0;
-if(scalar(@ARGV)==6 && $ARGV[3] eq "-j")
+if(scalar(@ARGV)==7 && $ARGV[4] eq "-j")
 {
-  $totalshares=$ARGV[4];
-  $thisshare=$ARGV[5];
+  $totalshares=$ARGV[5];
+  $thisshare=$ARGV[6];
 }
 
 
@@ -190,6 +196,8 @@ open(IN,"<:raw",$imagefn) || die "Could not open image file $imagefn for reading
 binmode IN;
 open(OUT,">:raw",$dumpfn) || die "Could not open dump file $dumpfn for writing: $!\n";
 binmode OUT;
+open(CLEANOUT,">:raw",$cleanfn) || die "Could not open dump file $cleanfn for writing: $!\n";
+binmode CLEANOUT;
 
 my $ende=0;
 my $pagen=0;
@@ -253,6 +261,8 @@ while(!$ende)
     }
   }
 
+  print CLEANOUT $out;
+
   # Add noise
   foreach(0 .. $biterrors)
   {
@@ -284,6 +294,7 @@ if(($outsize % $blocksize)>0) # Is the last block filled?
 
 close IN;
 close OUT;
+close CLEANOUT;
 
 my $size=$pagen*$sectors;
 my $nsectors=$size/512;
