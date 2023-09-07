@@ -3,7 +3,7 @@
 if(!scalar(@ARGV))
 {
   print "Usage: $0 <device>\n";
-  print "Usage: $0 <dumpfile> <size in MB>\n";
+  print "Usage: $0 <dumpfile> <size in MB> <data area size>\n";
   exit;
 }
 
@@ -13,14 +13,18 @@ my $xmlfn=$mydev.".xml"; $xmlfn=~s/\//_/g;
 open OUT,">:raw",$mydev; # XXXXXXX YOU HAVE TO CHANGE THIS PARAMETER, be careful that you do use your harddisk!
 open XML,">$xmlfn";
 
+
+my $DATAsize=$ARGV[2] || 1024;
+my $eccreal=($DATAsize/512)+1;
+my $majority=7;
+
 my $border0=512*1024*2; # 512MB pattern
 my $border7=1024*1024*2; # 512MB 00
 my $borderf=1280*1024*2; # 256 MB 77
 my $borderphi=1536*1024*2; # 256 MB FF
-my $DATAsize=$ARGV[2] || 1024;
-my $eccreal=($DATAsize/512)+1;
-my $majority=7;
-my $borderecc=$borderphi+$eccreal*$eccreal*$majority*$DATAsize*8+1; # lots of ECC
+my $borderecc=$borderphi+$eccreal*$eccreal*$majority*$DATAsize*8+1; # lots of ECC (for 512B DA we dont need much, for 4KB we need 11 GB)
+# And at the end we have the pattern again
+
 my $overwritten=1;
 
 if($ARGV[1])
