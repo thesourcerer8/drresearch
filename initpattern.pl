@@ -2,6 +2,7 @@
 
 if(!scalar(@ARGV))
 {
+  print "$0 generates a pattern and writes it directly to a device or to a dumpfile with a given size.\n";
   print "Usage: $0 <device>\n";
   print "Usage: $0 <dumpfile> <size in MB> <data area size>\n";
   exit;
