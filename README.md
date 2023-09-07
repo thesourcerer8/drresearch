@@ -6,4 +6,4 @@ A collection of tools to generate patterns, manage XOR files, analyze dumps, vis
 To use it on Windows you need to install Perl from https://strawberryperl.com/ and Python from https://www.python.org/ first
 
 # LDPC Recovery
-![image](https://github.com/thesourcerer8/drresearch/assets/6086693/1cded52d-5a94-4130-bc5f-79fc9d6c3bf6)
+![image](https://github.com/thesourcerer8/drresearch/assets/6086693/f9aaa023-7f22-432e-8b00-c4b5a64dac9a)
