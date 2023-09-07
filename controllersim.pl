@@ -21,7 +21,7 @@ if(scalar(@ARGV)==6 && $ARGV[4] eq "-j")
 {
   foreach(0 .. $ARGV[5]-1)
   {
-    unlink "$_.done";
+    unlink "$dumpfn.$_.done";
     system "perl \"$0\" \"$ARGV[0]\" \"$ARGV[1].$_\" \"$ARGV[2].$_\" \"$ARGV[3]\" \"$ARGV[4]\" \"$ARGV[5]\" $_ &";
    }
   my $done=0;
@@ -38,7 +38,7 @@ if(scalar(@ARGV)==6 && $ARGV[4] eq "-j")
   my @cleans=();
   foreach(0 .. $ARGV[5]-1)
   {
-    unlink "$_.done";
+    unlink "$dumpfn.$_.done";
     push @dumps,"$dumpfn.$_";
     push @cleans,"$cleanfn.$_";
   }
@@ -49,6 +49,11 @@ if(scalar(@ARGV)==6 && $ARGV[4] eq "-j")
   print "$cmd2\n";
   system($cmd2);
   print "$dumpfn and $cleanfn written.\n";
+  foreach(0 .. $ARGV[5]-1)
+  {
+    unlink "$dumpfn.$_";
+    unlink "$cleanfn.$_";
+  }
   exit;
 }
 our $totalshares=1;
@@ -302,9 +307,9 @@ print "Input Image Size: $size Bytes ".($size/1000/1000/1000)." GB $nsectors Sec
 
 print "Output Dump Size: $outsize Bytes ".($outsize/1000/1000/1000)." GB $pagen Pages with pagesize $pagesize -> $dumpfn\n";
 
-if(scalar(@ARGV)==6 && $ARGV[3] eq "-j")
+if(scalar(@ARGV)==7 && $ARGV[3] eq "-j")
 {
-  open OUT,">$ARGV[5].done";
+  open OUT,">$dumpfn.$thisshare.done";
   print OUT "done";
   close OUT;
 }
