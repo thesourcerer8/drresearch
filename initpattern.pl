@@ -17,7 +17,7 @@ my $border0=512*1024*2; # 512MB pattern
 my $border7=1024*1024*2; # 512MB 00
 my $borderf=1280*1024*2; # 256 MB 77
 my $borderphi=1536*1024*2; # 256 MB FF
-my $DATAsize=1024;
+my $DATAsize=$ARGV[2] || 1024;
 my $eccreal=($DATAsize/512)+1;
 my $majority=7;
 my $borderecc=$borderphi+$eccreal*$eccreal*$majority*$DATAsize*8+1; # lots of ECC
@@ -28,7 +28,7 @@ if($ARGV[1])
   $size=$ARGV[1]*1024*1024;
   if($size<$borderecc*512)
   {
-    print "WARNING: Not all of the pattern will be in the dump! Enlarge the dump size or change the dump configuration\n";
+    print "WARNING: Not all of the pattern will be in the dump! Enlarge the dump size to at least ".int($borderecc/2/1024)." or change the dump configuration\n";
   }
   $overwritten=0;
 }
