@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<Project>
+  <info>This is an artifical case file for big storage medium, designed for testing the key recovery and decoder</info>
+  <Records>
+    <Record StructureDefinitionName="Data area" StartAddress="0" StopAddress="4095" />
+    <Record StructureDefinitionName="ECC" StartAddress="4096" StopAddress="4567" />
+    <Record StructureDefinitionName="SA" StartAddress="4568" StopAddress="4577" />
+    <Record StructureDefinitionName="Data area" StartAddress="4578" StopAddress="8673" />
+    <Record StructureDefinitionName="ECC" StartAddress="8674" StopAddress="9145" />
+    <Record StructureDefinitionName="SA" StartAddress="9146" StopAddress="9155" />
+  </Records>
+  <Records>
+    <Record StructureDefinitionName="Page" StartAddress="0" StopAddress="9155" />
+  </Records>
+  <StructureDefinition Name="Page" Length="2" IsFindStructure="False">
+  <Page_size>9156</Page_size>
+  <Nominal_block_size>9156</Nominal_block_size>
+</Project>
