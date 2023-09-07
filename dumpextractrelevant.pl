@@ -29,7 +29,7 @@ if(open XML,"<$ARGV[2]")
   {
     if(m/<pattern type='ECC' begin='(\d+)' end='(\d+)' size='\d+' coverage='(\d+)'/)
     {
-      print "Loading pattern configuration from $ARGV[2]\n";	    
+      print "Loading pattern configuration from $ARGV[2]\n";
       $eccstart=$1;
       $eccend=$2;
       $ecccoverage=$3;
@@ -91,7 +91,7 @@ while(!$ende)
   my $isgood=0;
 
   my $result = index($sector, $char1, $offset); # Search for the first sector inside this page
-  while ($result != -1) 
+  while ($result != -1)
   {
     $posfound{$result}=1;
     $offset = $result + 1; # Where to search for the next sector inside this page?
@@ -100,7 +100,7 @@ while(!$ende)
 
   $offset=0;
   $result = index($sector, $char2, $offset); # Search for the first sector inside this page
-  while ($result != -1) 
+  while ($result != -1)
   {
     $posfound{$result-512+7}=1;
     $offset = $result + 1; # Where to search for the next sector inside this page?
@@ -109,6 +109,7 @@ while(!$ende)
 
   foreach my $result (sort keys %posfound)
   {
+    next if(length($sector)<($result+59));
     my $lbad=fixdecimal(substr($sector,$result+7,12));
     my $lbah=substr($sector,$result+23,8);
     my $lbab=fixdecimal(substr($sector,$result+39,20));
@@ -189,7 +190,7 @@ for(my $lba=$eccstart; $lba<=$eccend; $lba+=$inc)
 }
 my $percent=($found+$missing)?int(100*$found/($found+$missing)) : 0;
 print "Found: $found Missing: $missing => $percent % found (Range searched: $eccstart..$eccend inc $inc)\n";
-print "Missing: ".join(",",@missings)."\n" if($missing);
-
-print "Page Offsets for DATA: ".join(",",sort keys(%posfound))."\n";
+print "Missing: ".join(",",@missings)."\n" if($missing && $missing<20);
+print "This dump is incomplete or has not been properly XOR decoded yet. Please check the size and make sure it has been XOR decoded properly. If that doesn't help, please provide the whole dump.\n" if($percent<99);
+#print "Page Offsets for DATA: ".join(",",sort keys(%posfound))."\n";
 print STDERR "Done.\n";
