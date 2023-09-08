@@ -13,7 +13,7 @@ A working donor with both access to the controller and to the flash wired up
 Either PC3K Flash, VNR, FE or a Logic Analyzer
 
 ## Task:
-You have to use the initpattern.pl to generate a pattern for the donor into a file, and then write the pattern to the donor with a tool like dd
+You have to use the initpattern.pl to generate a pattern for the donor into a file, and then write the pattern to the donor with a tool like dd.
 After the pattern is written, dump the NAND flash.
 Decode the XOR where necessary (the pattern contains hundreds of megabytes of 00, 77 and FF patterns which should help you there if you do not have the XOR keys available yet)
 Run the dumpextractrelevant.pl over the pattern. It will tell you the percentage of the data that is required for the parameter extraction that was found. If it is below 100%, please look for XOR problems or other planes where the required data might be hidden, …
