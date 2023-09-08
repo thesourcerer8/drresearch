@@ -3,6 +3,7 @@ import scipy.io as scio
 import numpy as np
 import multiprocessing
 import sys
+import re
 
 ## LDPC Decoder for NAND Flash dump files
 
@@ -37,7 +38,17 @@ print("No: "+str(No))
 sigma = np.sqrt(No/2)
 print("sigma: "+str(sigma))
 
-H=np.unpackbits(np.fromfile(ldpcparam,dtype=np.uint8),axis=None,bitorder='little').astype(np.float32)
+n=int(re.search('_n(\d+)[_.]',ldpcparam).group(1))
+print("n: "+str(n))
+
+k=int(re.search('_k(\d+)[_.]',ldpcparam).group(1))
+print("k: "+str(k))
+
+m=int(re.search('_m(\d+)[_.]',ldpcparam).group(1))
+print("m: "+str(m))
+
+
+H=np.unpackbits(np.fromfile(ldpcparam,dtype=np.uint8),axis=None,bitorder='little').astype(np.float32).reshape(m,n)
 
 with open(inputdump,"rb") as dump:
 	with open(outputdump,"wb") as output:
