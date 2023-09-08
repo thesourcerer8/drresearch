@@ -107,6 +107,8 @@ while(!$ende)
     $result = index($sector, $char2, $offset);
   }
 
+  $isgood=1 if($in=~m/P00000/);
+
   foreach my $result (sort keys %posfound)
   {
     next if(length($sector)<($result+59));
