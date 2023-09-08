@@ -48,6 +48,7 @@ else
 print XML "<root overwritten='$overwritten'>\n<device>$ARGV[0]</device>\n<pattern type='sectornumber' begin='0' end='".($border0-1)."' size='".($border0)."'/>\n<pattern type='XOR-00' begin='$border0' end='".($border7-1)."' size='".($border7-$border0)."'/>\n<pattern type='XOR-77' begin='$border7' end='".($borderf-1)."' size='".($borderf-$border7)."'/>\n<pattern type='XOR-FF' begin='$borderf' end='".($borderphi-1)."' size='".($borderphi-$borderf)."'/>\n<pattern type='ECC' begin='$borderphi' end='".($borderecc-1)."' size='".($borderecc-$borderphi)."' coverage='$DATAsize' majority='$majority'/>\n<pattern type='sectornumber' begin='$borderecc' end='".(int($size/512)-1)."' size='".(int($size/512)-$borderecc)."'/>\n</root>\n";
 
 print "Size: $size Bytes ".($size/1000/1000/1000)." GB\n";
+print "Creating a pattern for page size of $DATAsize Bytes.\n";
 my $nblocks=$size/512;
 
 if($overwritten)
@@ -86,7 +87,8 @@ foreach my $block (0 .. $size/512)
     #print "\npatternsize: $patternsize\noffset: $offset\npattern: $pattern\npatternpos: $patternpos\nbittargetsector: $bittargetsector\n";
     if($patternpos>0)
     {
-      $data="\x00" x 512; #"0123456789abcdef"x(512/16);
+      $data=sprintf("P%011X%04X",$pattern,$patternpos) x (512/16); # "\x00" x 512; #"0123456789abcdef"x(512/16);
+      die "data not 512 bytes long!\n" if(length($data)!=512);
       if($bittargetsector==($patternpos-1) && $patternmod)
       {
         my $bittargetbyte=($pattern>>3) & 0x1FF;
