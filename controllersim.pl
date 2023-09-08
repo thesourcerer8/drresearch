@@ -15,6 +15,23 @@ my $imagefn=$ARGV[0];
 my $dumpfn=$ARGV[1];
 my $cleanfn=$ARGV[2];
 my $casefile=$ARGV[3];
+my $parallel=0;
+
+my $FTL="simple";
+
+
+sub calcoffset($)
+{
+  if($FTL eq "greyblock")
+  {
+    # TODO grey code implementation
+  }
+  if($FTL eq "greypage")
+  {
+    # TODO grey code implementation
+  }
+  return $_[0];
+}
 
 
 if(scalar(@ARGV)==6 && $ARGV[4] eq "-j")
@@ -22,38 +39,25 @@ if(scalar(@ARGV)==6 && $ARGV[4] eq "-j")
   foreach(0 .. $ARGV[5]-1)
   {
     unlink "$dumpfn.$_.done";
-    system "perl \"$0\" \"$ARGV[0]\" \"$ARGV[1].$_\" \"$ARGV[2].$_\" \"$ARGV[3]\" \"$ARGV[4]\" \"$ARGV[5]\" $_ &";
+    system "perl \"$0\" \"$ARGV[0]\" \"$ARGV[1]\" \"$ARGV[2]\" \"$ARGV[3]\" \"$ARGV[4]\" \"$ARGV[5]\" $_ &";
    }
   my $done=0;
   while(!$done)
   {
     $done=1;
+    sleep(1);
     foreach(0 .. $ARGV[5]-1)
     {
-      $done=0 if(!-f "$_.done");
+      $done=0 if(!-f "$dumpfn.$_.done");
+      last if(!$done);
     }
   }
   print "All jobs are done!\n";
-  my @dumps=();
-  my @cleans=();
   foreach(0 .. $ARGV[5]-1)
   {
     unlink "$dumpfn.$_.done";
-    push @dumps,"$dumpfn.$_";
-    push @cleans,"$cleanfn.$_";
   }
-  my $cmd="cat \"".join("\" \"",@dumps)."\" >\"$dumpfn\"";
-  print "$cmd\n";
-  system($cmd);
-  my $cmd2="cat \"".join("\" \"",@cleans)."\" >\"$cleanfn\"";
-  print "$cmd2\n";
-  system($cmd2);
-  print "$dumpfn and $cleanfn written.\n";
-  foreach(0 .. $ARGV[5]-1)
-  {
-    unlink "$dumpfn.$_";
-    unlink "$cleanfn.$_";
-  }
+  print "$dumpfn (with bit errors) and $cleanfn (without bit errors) have been written. You can now try to recover them.\n";
   exit;
 }
 our $totalshares=1;
@@ -62,6 +66,7 @@ if(scalar(@ARGV)==7 && $ARGV[4] eq "-j")
 {
   $totalshares=$ARGV[5];
   $thisshare=$ARGV[6];
+  $parallel=1;
 }
 
 
@@ -266,6 +271,9 @@ while(!$ende)
     }
   }
 
+  my $outputoffset=calcoffset($pagen)*$pagesize;
+
+  seek(CLEANOUT,$outputoffset,0);
   print CLEANOUT $out;
 
   # Add noise
@@ -281,6 +289,7 @@ while(!$ende)
   {
     print STDERR "WARNING: The output size has changed, it should be $pagesize but it actually is ".(length($out))."!\n";
   }
+  seek(OUT,$outputoffset,0);
   print OUT $out;
 
   $pagen++;
@@ -307,7 +316,7 @@ print "Input Image Size: $size Bytes ".($size/1000/1000/1000)." GB $nsectors Sec
 
 print "Output Dump Size: $outsize Bytes ".($outsize/1000/1000/1000)." GB $pagen Pages with pagesize $pagesize -> $dumpfn\n";
 
-if(scalar(@ARGV)==7 && $ARGV[3] eq "-j")
+if($parallel)
 {
   open OUT,">$dumpfn.$thisshare.done";
   print OUT "done";
