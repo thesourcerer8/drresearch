@@ -16,10 +16,10 @@ hexdump -C gmatrix_n36544_k32768_m3776.g >gmatrix_n36544_k32768_m3776.g.hex
 diff gmatrix_n36544_k32768_m3776.g.hex output4k.g.hex 
 
 echo "Now we generate the decoder parameters"
-python3 g2h.py gmatrix_n36544_k32768_m3776.g hmatrix_n36544_k32768_m3776.h.npy
+python3 g2h.py gmatrix_n36544_k32768_m3776.g hmatrix_n36544_k32768_m3776.h
 
 echo "Now we decode the dump (fix the bit errors):"
-python3 dumpdecoder.py "simulated(9156p).dump" hmatrix_n36544_k32768_m3776.h.npy 4k.case "corrected(9156p).dump"
+python3 dumpdecoder.py "simulated(9156p).dump" hmatrix_n36544_k32768_m3776.h 4k.case "corrected(9156p).dump"
 
 echo "Now we check the correct decoding:"
 diff "simulatedclean(9156p).dump" "corrected(9156p).dump"
