@@ -36,8 +36,7 @@ print("No: "+str(No))
 sigma = np.sqrt(No/2)
 print("sigma: "+str(sigma))
 
-
-H=np.load(ldpcparam)
+H=np.unpackbits(np.fromfile(ldpcparam,dtype=np.uint8),axis=None,bitorder='little').astype(np.float32)
 
 with open(inputdump,"rb") as dump:
 	with open(outputdump,"wb") as output:
