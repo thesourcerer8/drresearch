@@ -35,6 +35,12 @@ if($ARGV[1])
   {
     print "WARNING: Not all of the pattern will be in the dump! Enlarge the dump size to at least ".int($borderecc/2/1024)." or change the dump configuration\n";
   }
+  if(($DATAsize%512)>0)
+  {
+    print "ERROR: The datasize is not a multiple of 512 Bytes, please check the parameters!\n";
+    exit(-1);
+  }
+
   $overwritten=0;
 }
 else
