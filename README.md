@@ -24,11 +24,16 @@ You will then receive a file with the LDPC paramters to be used for decoding dum
 
 ## Current Limitations:
 * Unknown XOR pattern
+
 This solution assumes a known and solved XOR pattern. The initpattern.pl provides 00, 77 and FF patterns for recovering the XOR pattern, but for LDPC parameter extraction you will have to provide a dump where the XOR is already solved. In case there is still a XOR pattern left, the dumpextractrelevant tool will tell you that the dump doesn't contain the necessary patterns.
+
 * ECC coverage over SA
+
 If the ECC is covering the DATA+SA area, the key extraction is more difficult and needs further research but it's believed to be doable. In this case, you will need to write a complete 77 pattern to the disk and provide access to a dump of that as well.
-* Single DATA area inside a page 
-in case there is only a single DATA area inside a page, recovery of LDPC parameters just from a single dump is less likely to be successful. Theoretically the preferred solution in that case would be to use a logic analyzer that captures and logs the write requests to the NAND flash. Please contact me for a special initpattern variant which is more efficient for logic analyzers to reduce the write load.
+
+* Single DATA area inside a page
+  
+in case there is only a single DATA and a single ECC area inside a page, recovery of LDPC parameters just from a single dump is less likely to be successful. Theoretically the preferred solution in that case would be to use a logic analyzer that captures and logs the write requests to the NAND flash. Please contact me for a special initpattern variant which is more efficient for logic analyzers to reduce the write load.
 
 ## Usage
 
