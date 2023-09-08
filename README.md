@@ -32,7 +32,8 @@ This solution assumes a known and solved XOR pattern. The initpattern.pl provide
 If the ECC is covering the DATA+SA area, the key extraction is more difficult and needs further research but it's believed to be doable. In this case, you will need to write a complete 77 pattern to the disk and provide access to a dump of that as well.
 
 * Single DATA area inside a page
-  
+
+![image](https://github.com/thesourcerer8/drresearch/assets/6086693/c317b1e8-191f-4289-a814-2588103a72f6)
 in case there is only a single DATA and a single ECC area inside a page, recovery of LDPC parameters just from a single dump is less likely to be successful. Theoretically the preferred solution in that case would be to use a logic analyzer that captures and logs the write requests to the NAND flash. Please contact me for a special initpattern variant which is more efficient for logic analyzers to reduce the write load.
 
 ## Usage
