@@ -70,3 +70,5 @@ The dumpdecoder.py is a very simple version of the decoder, which primarily work
 During our research we came up with a filename convention that greatly eased research, development and debugging, that we encourage everyone to adopt:
 For physical dump files, please put the page size in bytes into the filename, e.g. simulated(9156p).dump or upload(9156p).dump
 
+# Contact
+If you have any questions or problems that you want to discuss publically, you can use the Issue system from GitHub in the menu on the top, or discuss it on hddguru. If you want to reach me personally, feel free to send direct messages on hddguru.
