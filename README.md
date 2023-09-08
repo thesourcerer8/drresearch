@@ -44,7 +44,7 @@ in case there is only a single DATA and a single ECC area inside a page, recover
 perl initpattern.pl <filename> <size in MB> <data area size in bytes>
 perl initpattern.pl pattern4k.dump 11000 4096
 ```
-Create a 11000MB (11GB) pattern image for a 4096 Byte data area. The data area size is most likely 4096, but it might also be 2048, 1024 or 8192. If you aren't sure, try 4096. If the pattern image size is too small for the given data area size, the tool will warn you right at the beginning. It is recommended to use a pattern size equal or slightly smaller to the target donor disk size.
+Create a 11000MB (11GB) pattern image for a 4096 Byte data area. The data area size is most likely 4096, but it might also be 2048, 1024 or 8192. If you aren't sure, try 4096. If you enter a wrong data area size that is lower than the data area size the disk is using, then the LDPC parameters cannot be recovered from the dump of the pattern. If the pattern image size is too small for the given data area size, the tool will warn you right at the beginning. It is recommended to use a pattern size equal or slightly smaller to the target donor disk size.
 
 ### Extracting the relevant parts from the dump
 
