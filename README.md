@@ -34,7 +34,7 @@ If the ECC is covering the DATA+SA area, the key extraction is more difficult an
 * Single DATA area inside a page
 
 ![image](https://github.com/thesourcerer8/drresearch/assets/6086693/c317b1e8-191f-4289-a814-2588103a72f6)
-in case there is only a single DATA and a single ECC area inside a page, recovery of LDPC parameters just from a single dump is less likely to be successful. Theoretically the preferred solution in that case would be to use a logic analyzer that captures and logs the write requests to the NAND flash. Please contact me for a special initpattern variant which is more efficient for logic analyzers to reduce the write load.
+in case there is only a single DATA and a single ECC area inside a page, recovery of LDPC parameters just from a single pattern dump is less likely to be successful. Theoretically the preferred solution in that case would be to use a logic analyzer that captures and logs the write requests to the NAND flash. Please contact me for a special initpattern variant which is more efficient for logic analyzers to reduce the write load.
 
 ## Usage
 
