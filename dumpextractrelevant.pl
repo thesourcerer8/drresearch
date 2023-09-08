@@ -123,7 +123,7 @@ while(!$ende)
     my $lba=undef;
     #print "Found $char at $result (fulladdress:$fulladdress xorpage:$xorpage blockpage:$blockpage)";
     my $lbaD=int($lbad) if($lbad=~m/^(\d+)$/);
-    my $lbaH=hex("0x".$lbah) if($lbah=~m/^([0-9a-fA-F]+)$/);
+    my $lbaH=hex("0x".$1) if($lbah=~m/^([0-9a-fA-F]+)$/);
     my $lbaB=int($lbab/512) if($lbab=~m/^(\d+)$/);
     # Majority-Voting on the LBA address
     $lba=$lbaD if(defined($lbaD) && defined($lbaH) && $lbaD == $lbaH);
