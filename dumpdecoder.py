@@ -6,8 +6,9 @@ import sys
 
 ## LDPC Decoder for NAND Flash dump files
 
-
-print("Usage: dumpdecoder.py <dumpfile.dump> <ldpcparameter.npy> <geometry.case> <output.dump>")
+if(len(sys.argv)<3):
+    print("Usage: dumpdecoder.py <dumpfile.dump> <ldpcparameter.h> <geometry.case> <output.dump>")
+    exit(0)
 
 
 inputdump=sys.argv[1]
