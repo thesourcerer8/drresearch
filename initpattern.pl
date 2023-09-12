@@ -28,9 +28,17 @@ my $borderecc=$borderphi+$eccreal*$eccreal*$majority*$DATAsize*8+1; # lots of EC
 
 my $overwritten=1;
 
+sub idema_gb2lba($) # ($GB)
+{
+  my $AdvertisedCapacity=$_[0];
+  my $LBAcounts = (97696368) + (1953504 * ($AdvertisedCapacity - 50));
+  return($LBAcounts);
+}
+
 if($ARGV[1])
 {
-  $size=$ARGV[1]*1024*1024;
+  $size=idema_gb2lba($1)*512 if($ARGV[1]=~m/^(\d+)GB$/i);
+  $size=$1*1024*1024 if($ARGV[1]=~m/^(\d+)$/i);
   if($size<$borderecc*512)
   {
     print "WARNING: Not all of the pattern will be in the dump! Enlarge the dump size to at least ".int($borderecc/2/1024)." or change the dump configuration\n";
