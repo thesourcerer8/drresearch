@@ -21,6 +21,8 @@ my $pagesize=4000; # Bytes
 my $eccstart=3145728;
 my $eccend=3614367;
 $pagesize=$1 if($ARGV[2]=~m/^(\d+)$/);
+$pagesize=$1 if($ARGV[1]=~m/\((\d+)p\)/);
+
 my $ecccoverage=1024;
 
 if(open XML,"<$ARGV[2]")
@@ -59,6 +61,7 @@ my %lbafound=();
 
 sub fixdecimal($) # Fixes up to 3 bit errors
 {
+  return $_[0] if(!defined($_[0]) || length($_[0])==0);
   my $str=$_[0];
   my $count=($str=~tr/[0-9]//);
   return $_[0] if($count==length($_[0]));
@@ -107,13 +110,12 @@ while(!$ende)
     $result = index($sector, $char2, $offset);
   }
 
-  $isgood=1 if($in=~m/P00000/);
-
   foreach my $result (sort keys %posfound)
   {
+    #print "Len: ".length($sector)." result:$result ".($result+59)."\n";
     next if(length($sector)<($result+59));
-    my $lbad=fixdecimal(substr($sector,$result+7,12));
     my $lbah=substr($sector,$result+23,8);
+    my $lbad=fixdecimal(substr($sector,$result+7,12));
     my $lbab=fixdecimal(substr($sector,$result+39,20));
     if(!defined($lbab))
     {
@@ -122,9 +124,9 @@ while(!$ende)
     }
     my $lba=undef;
     #print "Found $char at $result (fulladdress:$fulladdress xorpage:$xorpage blockpage:$blockpage)";
-    my $lbaD=int($lbad) if($lbad=~m/^(\d+)$/);
-    my $lbaH=hex("0x".$1) if($lbah=~m/^([0-9a-fA-F]+)$/);
-    my $lbaB=int($lbab/512) if($lbab=~m/^(\d+)$/);
+    my $lbaD=undef; $lbaD=int($lbad) if(defined($lbad) && $lbad=~m/^(\d+)$/);
+    my $lbaH=undef; $lbaH=hex("0x".$1) if(defined($lbah) && $lbah=~m/^([0-9a-fA-F]+)$/);
+    my $lbaB=undef; $lbaB=int($lbab/512) if(defined($lbab) && $lbab=~m/^(\d+)$/);
     # Majority-Voting on the LBA address
     $lba=$lbaD if(defined($lbaD) && defined($lbaH) && $lbaD == $lbaH);
     $lba=$lbaD if(defined($lbaD) && defined($lbaB) && $lbaD == $lbaB);
@@ -159,6 +161,7 @@ while(!$ende)
     #}
   }
   #print "Found 1874827776\n" if($in=~m/1874827776/);
+  $isgood=1 if(!$isgood && $in=~m/P00000/); # We want to populate the %lbafound first but still add the sector even if we dont find the phi pattern
 
   if($isgood)
   {
