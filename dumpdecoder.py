@@ -14,7 +14,7 @@ if(len(sys.argv)<3):
 
 inputdump=sys.argv[1]
 ldpcparam=sys.argv[2]
-pattern=sys.argv[3]
+geometry=sys.argv[3]
 outputdump=sys.argv[4]
 
 #pagesize = 4000
@@ -23,9 +23,40 @@ outputdump=sys.argv[4]
 #eccsize=476
 
 pagesize = 20
+datapos = [0]
+eccpos = [512]
 dataeccpos = [0]
 datasize=8
 eccsize=8
+
+with open(geometry,"r") as geo:
+	print("Reading values from geometry file "+geometry)
+	dataeccpos=[]
+	datapos=[]
+	eccpos=[]
+	for line in geo.readlines():
+		if re.search('<Page_size>(\d+)<\/Page_size>',line):
+			pagesize=int(re.search('<Page_size>(\d+)<\/Page_size>',line).group(1))
+		se=re.search('<Record StructureDefinitionName="(DA|Data area)" StartAddress="(\d+)" StopAddress="(\d+)" \/>',line)
+		if se:
+			dataeccpos.append(int(se.group(2))) # obsolete
+			datapos.append(int(se.group(2)))
+			datasize=int(se.group(3))-int(se.group(2))+1
+		se=re.search('<Record StructureDefinitionName="(ECC)" StartAddress="(\d+)" StopAddress="(\d+)" \/>',line)
+		if se:
+			eccpos.append(int(se.group(2)))
+			eccsize=int(se.group(3))-int(se.group(2))+1
+	if len(datapos)<1 or len(eccpos)<1:
+		print("Error: The geometry case file "+geometry+" does not contain enough data/ecc structures!")
+		exit(-1)
+
+
+print("datapos: "+str(datapos))
+print("eccpos: "+str(eccpos))
+print("dataeccpos: "+str(dataeccpos))
+print("pagesize: "+str(pagesize))
+print("eccsize: "+str(eccsize))
+
 
 ## Noise
 EbN = 3
