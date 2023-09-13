@@ -79,8 +79,8 @@ m=int(re.search('_m(\d+)[_.]',ldpcparam).group(1))
 print("m: "+str(m))
 
 
-H=np.unpackbits(np.fromfile(ldpcparam,dtype=np.uint8),axis=None,bitorder='little').astype(np.float32).reshape(m,n)
-
+H=np.unpackbits(np.fromfile(ldpcparam,dtype=np.uint8),axis=None,bitorder='little').astype(np.int64).reshape(m,n)
+#print("H shape: "+str(H.shape))
 with open(inputdump,"rb") as dump:
 	with open(outputdump,"wb") as output:
 		while dump:
@@ -90,10 +90,9 @@ with open(inputdump,"rb") as dump:
 				#print("x: "+str(x))
 				r = 2*x-1
 				#print("r: "+str(r))
+				#print("size of r: "+str(r.shape))
 				#print("H: "+str(H))
 				decoder = LDPCdecoder.decoder(H)
-				#print("r: "+str(r))
-				#print("size of r: "+str(r.shape))
 				decoder.setInputMSA(r, sigma)
 				
 				# Get Hard-Bits
