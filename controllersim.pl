@@ -195,12 +195,12 @@ if(open CASE,"<$casefile")
   close CASE;
 }
 
-print "Pagesize: $pagesize\n";
-print "Datapos: ".join(",",@datapos)."\n";
-
 
 $biterrors=1 if($pagesize<100);
 
+print "Pagesize: $pagesize\n";
+print "Datapos: ".join(",",@datapos)."\n";
+print "Biterrors: $biterrors (bit errors per page)\n";
 
 open(IN,"<:raw",$imagefn) || die "Could not open image file $imagefn for reading: $!\n";
 binmode IN;
