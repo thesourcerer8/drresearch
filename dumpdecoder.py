@@ -109,7 +109,7 @@ with open(inputdump,"rb") as dump:
 					decoded, y = decoder.iterateMinimumSumAlgorithm()
 					ErrorSPA = np.sum(y != x)
 		
-					print("Amount of Bit Errors (SPA) : %d " % ErrorSPA)
+					#print("Amount of Bit Errors (SPA) : %d " % ErrorSPA)
 					if(decoded):
 						break
 		
