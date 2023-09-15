@@ -85,6 +85,8 @@ with open(inputdump,"rb") as dump:
 	with open(outputdump,"wb") as output:
 		while dump:
 			page = bytearray(dump.read(pagesize))
+			if len(page)<pagesize:
+				break
 			for pos in dataeccpos:
 				x = np.unpackbits(np.frombuffer(page[pos:pos+datasize+eccsize],dtype=np.uint8),axis=None,bitorder='little').astype(np.float32)
 				#print("x: "+str(x))
