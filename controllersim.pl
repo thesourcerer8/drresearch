@@ -1,6 +1,10 @@
 #!/usr/bin/perl -w
 use strict;
 use List::MoreUtils qw(uniq);
+use Getopt::Long;
+
+
+
 
 if(scalar(@ARGV)<3)
 {
@@ -18,6 +22,28 @@ my $casefile=$ARGV[3];
 my $parallel=0;
 
 my $FTL="simple";
+
+my $biterrors=10;
+my $pagesperblock=128;
+my $eccmode="LDPC";
+my $ECCcoversSA=1;
+my $XORcoversECC=0;
+my $XORcoversSA=0;
+my $ECCcoversXORedDA=0;
+my $SAdedicatedECC=0;
+
+
+
+GetOptions ("debug=i" => \$debug,
+            "FTL=s"   => \$FTL,
+            "biterrors=i"  => \$biterrors,
+            "ECCmode=s" => \$eccmode,
+            "ECCcoversSA" => \$ECCcoversSA,
+            "XORcoversECC" => \$XORcoversECC,
+            "XORcoversSA" => \$XORcoversSA) 
+or die("Error in command line arguments\n");
+
+
 
 
 sub calcoffset($)
@@ -75,14 +101,14 @@ my $pagesize=4000; # Bytes
 my $ecccoverage=1024; # Bytes
 my @datapos=(0,1500);
 my $datasize=1024;
-my $sectors=scalar(@datapos)*$datasize;
 my @sapos=(3512);
 my $sasize=8;
 my @eccpos=(1024,2524);
 my $eccsize=476;
-my $blocksize=$pagesize;
-my $biterrors=10;
-my $eccmode="LDPC";
+my $sectors=scalar(@datapos)*$datasize; # !!! NEEDS TO BE ADAPTED LATER ON IN CASE THE VALUES CHANGED
+my $blocksize=$pagesize*$pagesperblock; # !!! NEEDS TO BE ADAPTED LATER ON IN CASE THE VALUES CHANGED
+
+
 
 our @ldpckey=();
 sub ldpcauto($$) # Encoder
@@ -169,7 +195,11 @@ if(open CASE,"<$casefile")
   while(<CASE>)
   {
     $pagesize=$1 if(m/<Page_size>(\d+)<\/Page_size>/);
-    $blocksize=$1 if(m/<Nominal_block_size>(\d+)<\/Nominal_block_size>/); # Should we use Nominal or Actual?
+    if(m/<Nominal_block_size>(\d+)<\/Nominal_block_size>/) # Should we use Nominal or Actual?
+    {
+      $blocksize=$1;
+      $pagesperblock=$blocksize/$pagesize;
+    }
     if(m/<Record StructureDefinitionName="(DA|Data area)" StartAddress="(\d+)" StopAddress="(\d+)" \/>/i)
     {
       print "Adding $2 to datapos\n";
