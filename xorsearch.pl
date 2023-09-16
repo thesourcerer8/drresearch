@@ -9,7 +9,7 @@ my $maximumblocks=49;
 if(scalar(@ARGV)<3)
 {
   print "Usage: $0 <dumpfile.dump> <xorpattern.xor> <casefile.case>\n";
-  print "Searches through a dumpfile for the xorpattern, uses the geometry from the case file and the pattern configuration from the pattern.xml. Writes the resulting xorpattern to the xorpattern.xor\n";
+  print "Searches through a dumpfile for the xorpattern, uses the geometry from the case file, writes the resulting xorpattern to the xorpattern.xor\n";
   exit;
 }
 
@@ -113,7 +113,7 @@ if(open CASE,"<$casefn")
   while(<CASE>)
   {
     $pagesize=$1 if(m/<Page_size>(\d+)<\/Page_size>/);
-    if(m/<Nominal_block_size>(\d+)<\/Nominal_block_size>/) # Should we use Nominal or Actual?
+    if(m/<Real_block_size>(\d+)<\/Real_block_size>/) # Should we use Nominal or Actual?
     {
       $blocksize=$1;
       $pagesperblock=$blocksize/$pagesize;
