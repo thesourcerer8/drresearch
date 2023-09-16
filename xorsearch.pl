@@ -6,9 +6,9 @@ use Getopt::Long;
 my $maximumblocks=49;
 
 
-if(scalar(@ARGV)<4)
+if(scalar(@ARGV)<3)
 {
-  print "Usage: $0 <dumpfile.dump> <xorpattern.xor> <casefile.case> <xmlpattern.xml>\n";
+  print "Usage: $0 <dumpfile.dump> <xorpattern.xor> <casefile.case>\n";
   print "Searches through a dumpfile for the xorpattern, uses the geometry from the case file and the pattern configuration from the pattern.xml. Writes the resulting xorpattern to the xorpattern.xor\n";
   exit;
 }
@@ -31,7 +31,6 @@ my $debug=0;
 my $dumpfn=$ARGV[0];
 my $xorfn=$ARGV[1];
 my $casefn=$ARGV[2];
-my $patternxmlfn=$ARGV[3];
 
 
 my $ECCcoversSA=1;
