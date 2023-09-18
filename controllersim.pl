@@ -4,8 +4,6 @@ use List::MoreUtils qw(uniq);
 use Getopt::Long;
 
 
-
-
 if(scalar(@ARGV)<3)
 {
   print "Usage: $0 <imagefile.img> <dumpfilewithbiterrors.dump> <dumpfilewithoutbiterrors.dump> <.case>\n";
@@ -19,6 +17,7 @@ my $imagefn=$ARGV[0];
 my $dumpfn=$ARGV[1];
 my $cleanfn=$ARGV[2];
 my $casefile=$ARGV[3];
+my $XORfn=undef;
 my $parallel=0;
 
 my $FTL="simple";
@@ -26,21 +25,23 @@ my $FTL="simple";
 my $biterrors=10;
 my $pagesperblock=128;
 my $eccmode="LDPC";
-my $ECCcoversSA=1;
+my $ECCcoversClearSA=1;
+my $ECCcoversXORedSA=1;
+my $ECCcoversXORedDA=0;
 my $XORcoversECC=0;
 my $XORcoversSA=0;
-my $ECCcoversXORedDA=0;
 my $SAdedicatedECC=0;
-
-
 
 GetOptions ("debug=i" => \$debug,
             "FTL=s"   => \$FTL,
             "biterrors=i"  => \$biterrors,
-            "ECCmode=s" => \$eccmode,
-            "ECCcoversSA" => \$ECCcoversSA,
+            "ECCmode=s" => \$eccmode, # RANDOM, BCH or LDPC
+            "ECCcoversClearSA" => \$ECCcoversClearSA,
+            "ECCcoversXORedSA" => \$ECCcoversXORedSA,
+            "ECCcoversXORedDA" => \$ECCcoversXORedDA,
             "XORcoversECC" => \$XORcoversECC,
-            "XORcoversSA" => \$XORcoversSA) 
+            "XORcoversSA" => \$XORcoversSA,
+            "XORfile" =>\$XORfn)
 or die("Error in command line arguments\n");
 
 
@@ -96,7 +97,6 @@ if(scalar(@ARGV)==7 && $ARGV[4] eq "-j")
 }
 
 
-
 my $pagesize=4000; # Bytes
 my $ecccoverage=1024; # Bytes
 my @datapos=(0,1500);
@@ -105,9 +105,10 @@ my @sapos=(3512);
 my $sasize=8;
 my @eccpos=(1024,2524);
 my $eccsize=476;
+my @saeccpos=();
+my $saeccsize=0;
 my $sectors=scalar(@datapos)*$datasize; # !!! NEEDS TO BE ADAPTED LATER ON IN CASE THE VALUES CHANGED
 my $blocksize=$pagesize*$pagesperblock; # !!! NEEDS TO BE ADAPTED LATER ON IN CASE THE VALUES CHANGED
-
 
 
 our @ldpckey=();
@@ -192,10 +193,11 @@ if(open CASE,"<$casefile")
   my @mydatapos=();
   my @myeccpos=();
   my @mysapos=();
+  my @mysaeccpos=();
   while(<CASE>)
   {
     $pagesize=$1 if(m/<Page_size>(\d+)<\/Page_size>/);
-    if(m/<Nominal_block_size>(\d+)<\/Nominal_block_size>/) # Should we use Nominal or Actual?
+    if(m/<Actual_block_size>(\d+)<\/Actual_block_size>/) # Should we use Nominal or Actual?
     {
       $blocksize=$1;
       $pagesperblock=$blocksize/$pagesize;
@@ -207,19 +209,25 @@ if(open CASE,"<$casefile")
       $datasize=$3-$2+1;
       $ecccoverage=$datasize;
     }
-    if(m/<Record StructureDefinitionName="ECC" StartAddress="(\d+)" StopAddress="(\d+)" \/>/)
+    if(m/<Record StructureDefinitionName="ECC" StartAddress="(\d+)" StopAddress="(\d+)" \/>/i)
     {
       push @myeccpos,$1;
       $eccsize=$2-$1+1;
     }
-    if(m/<Record StructureDefinitionName="SA" StartAddress="(\d+)" StopAddress="(\d+)" \/>/)
+    if(m/<Record StructureDefinitionName="SA" StartAddress="(\d+)" StopAddress="(\d+)" \/>/i)
     {
       push @mysapos,$1;
       $sasize=$2-$1+1;
     }
+    if(m/<Record StructureDefinitionName="SA[\-_]ECC" StartAddress="(\d+)" StopAddress="(\d+)" \/>/i)
+    {
+      push @mysaeccpos,$1;
+      $saeccsize=$2-$1+1;
+    }
     @datapos=uniq @mydatapos;
     @eccpos=uniq @myeccpos;
     @sapos=uniq @mysapos;
+    @saeccpos=uniq @mysaeccpos;
   }
   $sectors=scalar(@datapos)*$datasize;
   close CASE;
@@ -227,6 +235,28 @@ if(open CASE,"<$casefile")
 
 
 $biterrors=1 if($pagesize<100);
+
+our @xorpattern=();
+
+if(defined($XORfn))
+{
+  if(open(XOR,"<$XORfn"))
+  {
+    print "Loading XOR key from $XORfn\n";
+    binmode XOR;
+    foreach(0 .. $pagesperblock-1)
+    {
+      my $data="";
+      read XOR,$data,$pagesize;
+      push @xorpattern,$data;
+    }
+    close XOR;
+  }
+  else
+  {
+    die "Error: Could not load XOR pattern from XOR file $XORfn : $!\n";
+  }
+}
 
 print "Pagesize: $pagesize\n";
 print "Datapos: ".join(",",@datapos)."\n";
@@ -244,6 +274,8 @@ my $pagen=0;
 
 @ldpckey=ldpcauto($ecccoverage*8,$eccsize*8);
 #print "LDPCKEY: ".scalar(@ldpckey)." ".length($ldpckey[0])."\n";
+
+
 
 while(!$ende)
 {
@@ -264,19 +296,24 @@ while(!$ende)
   my $sectorpos=0;
   foreach(@datapos)
   {
-    substr($out,$_,$datasize)=substr($in,$sectorpos,$datasize);
+    my $da=substr($in,$sectorpos,$datasize);
+    $da^=substr($xorpattern[$pagen % $pagesperblock],$_,$datasize) if(defined($XORfn) && $ECCcoversXORedDA); # XOR before ECC
+    substr($out,$_,$datasize)=$da;
     $sectorpos+=$datasize;
   }
   # Fill SA blocks
   foreach(@sapos)
   {
-    substr($out,$_,$sasize)=cutpad(pack("Q",$pagen),$sasize);
+    my $sa=cutpad(pack("Q",$pagen),$sasize);
+    $sa^=substr($xorpattern[$pagen % $pagesperblock],$_,$sasize) if(defined($XORfn) && $ECCcoversXORedSA); # XOR before ECC
+    substr($out,$_,$sasize)=$sa;
   }
-  # Fake LDPC block
+  # ECC block
   foreach my $eccnum(0 .. $#eccpos)
   {
     my $eccpos=$eccpos[$eccnum];
     my $datapos=$datapos[$eccnum];
+    my $sapos=$sapos[$eccnum];
     if($eccmode eq "RANDOM")
     {
       foreach ($eccpos .. ($eccpos+$eccsize-1))
@@ -286,13 +323,13 @@ while(!$ende)
     }
     elsif($eccmode eq "LDPC")
     {
-      substr($out,$eccpos,$eccsize)=ldpcencode(substr($out,$datapos,$ecccoverage));
+      substr($out,$eccpos,$eccsize)=ldpcencode(substr($out,$datapos,$ecccoverage).(($ECCcoversClearSA||$ECCcoversXORedSA)?substr($out,$sapos,$sasize):""));
       if($debug && !$pagen)
       {
         open DECT,">decoder.test";
-        print DECT "u = ".numpyarr(substr($out,$datapos,$ecccoverage))."\n";
-	print DECT "x = ".numpyarr(substr($out,$eccpos,$eccsize))."\n";
-	close DECT;
+        print DECT "u = ".numpyarr(substr($out,$datapos,$ecccoverage).(($ECCcoversClearSA||$ECCcoversXORedSA)?substr($out,$sapos,$sasize):""))."\n";
+        print DECT "x = ".numpyarr(substr($out,$eccpos,$eccsize))."\n";
+        close DECT;
       }
     }
     elsif($eccmode eq "BCH")
@@ -300,6 +337,28 @@ while(!$ende)
       # to be implemented
     }
   }
+  if(defined($XORfn) && !$ECCcoversXORedDA) # It hasnt been XORed already, so we do it now
+  {
+    foreach(@datapos)
+    {
+      substr($out,$_,$datasize)^=substr($xorpattern[$pagen % $pagesperblock],$_,$datasize);
+    }
+  }
+  if(defined($XORfn) && $XORcoversECC)
+  {
+    foreach(@eccpos)
+    {
+      substr($out,$_,$eccsize)^=substr($xorpattern[$pagen % $pagesperblock],$_,$eccsize);
+    }
+  }
+  if(defined($XORfn) && $XORcoversSA && !$ECCcoversXORedSA)
+  {
+    foreach(@sapos)
+    {
+      substr($out,$_,$sasize)^=substr($xorpattern[$pagen % $pagesperblock],$_,$sasize);
+    }
+  }
+ 
 
   my $outputoffset=calcoffset($pagen)*$pagesize;
 
