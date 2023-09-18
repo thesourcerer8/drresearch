@@ -65,7 +65,7 @@ sub maj(@)
   my $v=scalar(@_);
   my $taken=$v&1?$v:$v-1;
   my $th=($taken+1)>>1;
-  
+
   return $_[0] if($v<3);
 
   my $localwarnings=0;
@@ -73,12 +73,12 @@ sub maj(@)
   my $final="";
   foreach my $byte (0 .. length($_[0])-1)
   {
-    my $byteval=0;	   
-    foreach my $bit(0 .. 7) 
+    my $byteval=0;
+    foreach my $bit(0 .. 7)
     {
       my $v=0;
       my $bitv=1<<$bit;
-      #foreach my $variant(-3 .. -1) # 
+      #foreach my $variant(-3 .. -1) #
       foreach my $variant(0 .. $taken-1)
       {
         #print "sol$sol variant:$variant byte:$byte Byte read: ".unpack("C",substr($solutions{$sol}[$variant],$byte,1))."\n";
@@ -101,7 +101,7 @@ sub maj(@)
 
 GetOptions ("debug=i" => \$debug,
             "XORcoversECC" => \$XORcoversECC,
-            "XORcoversSA" => \$XORcoversSA) 
+            "XORcoversSA" => \$XORcoversSA)
 or die("Error in command line arguments\n");
 
 if(open CASE,"<$casefn")
@@ -163,48 +163,58 @@ our %foundpattern=();
 
 my $size=-s $dumpfn;
 
-print "Loading block starts from dump...\n";
-for(my $pos=0;$pos<=$size-6;$pos+=$blocksize)
-{
-  seek(IN,$pos,0);
-  my $in="";
-  my $read=read IN,$in,6;
-  $foundpattern{$in}++;
-}
-print "Dump fully loaded.\n";
-
-my @sortedpat=sort {$foundpattern{$a} <=> $foundpattern{$b}} keys %foundpattern;
-
-print "Found patterns sorted by occurance:\n";
-foreach(@sortedpat)
-{
-  print bin2hex($_)." ".$foundpattern{$_}."\n";
-}
-print "Analyzing for best 00 pattern:\n";
 my $bestpattern=-1;
 my $bestmatch=0;
-foreach my $i (0 .. 30)
+my $bestoffset=0;
+
+for(my $offset=0;$offset<$page;$offset+=2)
 {
-  my $thispattern=$sortedpat[$i];
-  my $matches=0;
-  foreach my $j (0 .. 30)
+  print "Loading block starts from dump...\n";
+  for(my $pos=$offset;$pos<=($size-512);$pos+=$blocksize)
   {
-    $matches++ if(defined($startpattern{$thispattern ^ $sortedpat[$j]})); 
+    seek(IN,$pos,0);
+    my $in="";
+    my $read=read IN,$in,6;
+    $foundpattern{$in}++;
   }
-  if($matches>$bestmatch)
+  print "Dump fully loaded.\n";
+
+  my @sortedpat=sort {$foundpattern{$a} <=> $foundpattern{$b}} keys %foundpattern;
+
+  print "Found patterns sorted by occurance:\n";
+  foreach(@sortedpat)
   {
-    print "Found better match: $i with $matches matches\n";
-    $bestpattern=$thispattern;
-    $bestmatch=$matches;
+    print bin2hex($_)." ".$foundpattern{$_}."\n";
+  }
+  print "Analyzing for best 00 pattern:\n";
+  foreach my $i (0 .. 30)
+  {
+    my $thispattern=$sortedpat[$i];
+    my $matches=0;
+    foreach my $j (0 .. 30)
+    {
+      $matches++ if(defined($startpattern{$thispattern ^ $sortedpat[$j]}));
+    }
+    if($matches>$bestmatch)
+    {
+      print "Found better match: $i with $matches matches\n";
+      $bestpattern=$thispattern;
+      $bestmatch=$matches;
+      $bestoffset=$offset;
+    }
+  }
+  my $nbestpatterns=$foundpattern{$bestpattern};
+  print "Best match found: $bestmatch at offset $bestoffset - ".bin2hex($bestpattern)." - Occurances: $nbestpatterns\n";
+  if($bestmatch>=4)
+  {
+    print "We found all 5 patterns, we can stop searching.\n";
   }
 }
-my $nbestpatterns=$foundpattern{$bestpattern};
-print "Best match found: $bestmatch - ".bin2hex($bestpattern)." - Occurances: $nbestpatterns\n";
 
 print "Loading maximum $maximumblocks full blocks from dump...\n";
 print "If it takes too much RAM and crashes, then please reduce the \$maximumblocks parameter in the script.\n";
 our @majpatterns=();
-for(my $pos=0;$pos<=$size-6;$pos+=$blocksize)
+for(my $pos=0;$pos<=($size-512);$pos+=$blocksize)
 {
   seek(IN,$pos,0);
   my $in="";
@@ -213,7 +223,7 @@ for(my $pos=0;$pos<=$size-6;$pos+=$blocksize)
   {
     seek(IN,$pos,0);
     read IN,$in,$blocksize;
-    push @majpatterns,$in; 
+    push @majpatterns,$in;
     last if(scalar(@majpatterns)>=$maximumblocks);
   }
 }
@@ -224,7 +234,6 @@ print "Calculating XOR pattern\n";
 my $xorpattern=maj(@majpatterns);
 
 print OUT $xorpattern;
-
 
 
 print STDERR "Done.\n";
