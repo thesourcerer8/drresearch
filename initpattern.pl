@@ -12,7 +12,6 @@ my $mydev=($ARGV[0] || "/dev/sdx");
 my $xmlfn=$mydev.".xml"; $xmlfn=~s/\//_/g;
 
 open OUT,">:raw",$mydev; # XXXXXXX YOU HAVE TO CHANGE THIS PARAMETER, be careful that you do use your harddisk!
-open XML,">$xmlfn";
 
 
 my $DATAsize=$ARGV[2] || 1024;
@@ -59,7 +58,9 @@ else
   $overwritten=1;
 }
 
+open XML,">$xmlfn";
 print XML "<root overwritten='$overwritten'>\n<device>$ARGV[0]</device>\n<pattern type='sectornumber' begin='0' end='".($border0-1)."' size='".($border0)."'/>\n<pattern type='XOR-00' begin='$border0' end='".($border7-1)."' size='".($border7-$border0)."'/>\n<pattern type='XOR-77' begin='$border7' end='".($borderf-1)."' size='".($borderf-$border7)."'/>\n<pattern type='XOR-FF' begin='$borderf' end='".($borderphi-1)."' size='".($borderphi-$borderf)."'/>\n<pattern type='ECC' begin='$borderphi' end='".($borderecc-1)."' size='".($borderecc-$borderphi)."' coverage='$DATAsize' majority='$majority'/>\n<pattern type='sectornumber' begin='$borderecc' end='".(int($size/512)-1)."' size='".(int($size/512)-$borderecc)."'/>\n</root>\n";
+close XML;
 
 print "Size: $size Bytes ".($size/1000/1000/1000)." GB\n";
 print "Creating a pattern for page size of $DATAsize Bytes.\n";
@@ -122,7 +123,6 @@ foreach my $block (0 .. $size/512)
 }
 
 close OUT;
-close XML;
 print STDERR "Pattern has been written to device/file $mydev\n";
 print STDERR "Pattern configuration has been written to the file $xmlfn in XML format.\n";
 print STDERR "You can now write the pattern image to the disk/pendrive/car with dd, HxD or PC3K, or use it in the controllersim.\n";
