@@ -119,7 +119,7 @@ foreach my $block (0 .. $size/512)
   }
   print OUT $data;
   my $percent=int(100*$block/$nblocks);
-  print STDERR "$block $percent\%\n" if(!($block %100000));
+  print STDERR "$block $percent\%\n" if(!($block %1000000));
 }
 
 close OUT;
