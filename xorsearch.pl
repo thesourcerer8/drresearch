@@ -167,7 +167,7 @@ my $bestpattern=-1;
 my $bestmatch=0;
 my $bestoffset=0;
 
-for(my $offset=0;$offset<$page;$offset+=2)
+for(my $offset=0;$offset<$pagesize;$offset+=2)
 {
   print "Loading block starts from dump...\n";
   for(my $pos=$offset;$pos<=($size-512);$pos+=$blocksize)
@@ -179,12 +179,12 @@ for(my $offset=0;$offset<$page;$offset+=2)
   }
   print "Dump fully loaded.\n";
 
-  my @sortedpat=sort {$foundpattern{$a} <=> $foundpattern{$b}} keys %foundpattern;
+  my @sortedpat=sort {$foundpattern{$b} <=> $foundpattern{$a}} keys %foundpattern;
 
   print "Found patterns sorted by occurance:\n";
   foreach(@sortedpat)
   {
-    print bin2hex($_)." ".$foundpattern{$_}."\n";
+    #print bin2hex($_)." ".$foundpattern{$_}."\n";
   }
   print "Analyzing for best 00 pattern:\n";
   foreach my $i (0 .. 30)
@@ -208,6 +208,7 @@ for(my $offset=0;$offset<$page;$offset+=2)
   if($bestmatch>=4)
   {
     print "We found all 5 patterns, we can stop searching.\n";
+    last;
   }
 }
 
@@ -218,8 +219,8 @@ for(my $pos=0;$pos<=($size-512);$pos+=$blocksize)
 {
   seek(IN,$pos,0);
   my $in="";
-  my $read=read IN,$in,6;
-  if($in eq $bestpattern)
+  my $read=read IN,$in,$blocksize;
+  if(substr($in,$bestoffset,6) eq $bestpattern)
   {
     seek(IN,$pos,0);
     read IN,$in,$blocksize;
@@ -229,11 +230,11 @@ for(my $pos=0;$pos<=($size-512);$pos+=$blocksize)
 }
 print "Dump fully loaded.\n";
 
-print "Calculating XOR pattern\n";
+print "Calculating XOR pattern from ".scalar(@majpatterns)." patterns\n";
 
 my $xorpattern=maj(@majpatterns);
 
 print OUT $xorpattern;
 
-
+print STDERR "Writing out final XOR pattern to $xorfn\n";
 print STDERR "Done.\n";
