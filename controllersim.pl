@@ -396,7 +396,10 @@ if(($outsize % $blocksize)>0) # Is the last block filled?
 {
   print "Filling last block with pages with spaces\n";
   my $todo=$blocksize-($outsize % $blocksize);
+  seek(OUT,$outsize,0);
   print OUT ' ' x $todo; # Fill the last block
+  seek(CLEANOUT,$outsize,0);
+  print CLEANOUT ' ' x $todo; # Fill the last block
   $outsize+=$todo;
   $pagen+=$todo/$pagesize;
 }
