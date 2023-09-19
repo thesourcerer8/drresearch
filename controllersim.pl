@@ -41,7 +41,8 @@ GetOptions ("debug=i" => \$debug,
             "ECCcoversXORedDA" => \$ECCcoversXORedDA,
             "XORcoversECC" => \$XORcoversECC,
             "XORcoversSA" => \$XORcoversSA,
-            "XORfile" =>\$XORfn)
+            "XORfile" =>\$XORfn,
+            "SAdedicatedECC" => \$SAdedicatedECC)
 or die("Error in command line arguments\n");
 
 
