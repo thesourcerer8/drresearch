@@ -18,21 +18,27 @@ my $dumpfn=$ARGV[1];
 my $cleanfn=$ARGV[2];
 my $casefile=$ARGV[3];
 my $XORfn=undef;
-my $parallel=0;
 
 my $FTL="simple";
 
 my $biterrors=10;
 my $pagesperblock=128;
 my $eccmode="LDPC";
-my $ECCcoversClearSA=1;
-my $ECCcoversXORedSA=1;
+my $ECCcoversClearSA=0;
+my $ECCcoversXORedSA=0;
 my $ECCcoversXORedDA=0;
 my $XORcoversECC=0;
 my $XORcoversSA=0;
 my $SAdedicatedECC=0;
 
+our $totalshares=1;
+our $thisshare=-1;
+
+my @oldargs=@ARGV;
+
 GetOptions ("debug=i" => \$debug,
+            "j=i" => \$totalshares,
+	    "n=i" => \$thisshare,
             "FTL=s"   => \$FTL,
             "biterrors=i"  => \$biterrors,
             "ECCmode=s" => \$eccmode, # RANDOM, BCH or LDPC
@@ -41,7 +47,7 @@ GetOptions ("debug=i" => \$debug,
             "ECCcoversXORedDA" => \$ECCcoversXORedDA,
             "XORcoversECC" => \$XORcoversECC,
             "XORcoversSA" => \$XORcoversSA,
-            "XORfile" =>\$XORfn,
+            "XORfile=s" =>\$XORfn,
             "SAdedicatedECC" => \$SAdedicatedECC)
 or die("Error in command line arguments\n");
 
@@ -62,44 +68,37 @@ sub calcoffset($)
 }
 
 
-if(scalar(@ARGV)==6 && $ARGV[4] eq "-j")
+if($totalshares>1 && $thisshare==-1)
 {
-  foreach(0 .. $ARGV[5]-1)
+  foreach(0 .. $totalshares-1)
   {
     unlink "$dumpfn.$_.done";
-    system "perl \"$0\" \"$ARGV[0]\" \"$ARGV[1]\" \"$ARGV[2]\" \"$ARGV[3]\" \"$ARGV[4]\" \"$ARGV[5]\" $_ &";
+    my $cmd="perl \"$0\" \"".join("\" \"",@oldargs)."\" -n $_ &";
+    #print "$cmd\n";
+    system $cmd;
    }
   my $done=0;
   while(!$done)
   {
     $done=1;
     sleep(1);
-    foreach(0 .. $ARGV[5]-1)
+    foreach(0 .. $totalshares-1)
     {
       $done=0 if(!-f "$dumpfn.$_.done");
       last if(!$done);
     }
   }
   print "All jobs are done!\n";
-  foreach(0 .. $ARGV[5]-1)
+  foreach(0 .. $totalshares-1)
   {
     unlink "$dumpfn.$_.done";
   }
   print "$dumpfn (with bit errors) and $cleanfn (without bit errors) have been written. You can now try to recover them.\n";
   exit;
 }
-our $totalshares=1;
-our $thisshare=0;
-if(scalar(@ARGV)==7 && $ARGV[4] eq "-j")
-{
-  $totalshares=$ARGV[5];
-  $thisshare=$ARGV[6];
-  $parallel=1;
-}
-
 
 my $pagesize=4000; # Bytes
-my $ecccoverage=1024; # Bytes
+my $ecccoverage=1024; # Bytes , this only covers the DA area, not the SA area
 my @datapos=(0,1500);
 my $datasize=1024;
 my @sapos=(3512);
@@ -153,6 +152,7 @@ sub ldpcauto($$) # Encoder
 sub ldpcencode($)
 {
   my $output="\x00" x length($ldpckey[0]);
+  #print "LDPC Length: ".length($ldpckey[0])." ".scalar(@ldpckey)." ".length($output)."\n";
   foreach my $byte(0 .. length($_[0])-1)
   {
     my $bytev=unpack("C",substr($_[0],$byte,1));
@@ -190,7 +190,7 @@ sub numpyarr($)
 
 if(open CASE,"<$casefile")
 {
-  print "Reading from $casefile\n";
+  print "Reading from $casefile\n" if($thisshare<1);
   my @mydatapos=();
   my @myeccpos=();
   my @mysapos=();
@@ -205,7 +205,7 @@ if(open CASE,"<$casefile")
     }
     if(m/<Record StructureDefinitionName="(DA|Data area)" StartAddress="(\d+)" StopAddress="(\d+)" \/>/i)
     {
-      print "Adding $2 to datapos\n";
+      print "Adding $2 to datapos\n" if($thisshare<1);
       push @mydatapos,$2;
       $datasize=$3-$2+1;
       $ecccoverage=$datasize;
@@ -243,7 +243,7 @@ if(defined($XORfn))
 {
   if(open(XOR,"<$XORfn"))
   {
-    print "Loading XOR key from $XORfn\n";
+    print "Loading XOR key from $XORfn\n" if($thisshare<1);
     binmode XOR;
     foreach(0 .. $pagesperblock-1)
     {
@@ -259,24 +259,28 @@ if(defined($XORfn))
   }
 }
 
-print "Pagesize: $pagesize\n";
-print "Datapos: ".join(",",@datapos)."\n";
-print "Biterrors: $biterrors (bit errors per page)\n";
-
 open(IN,"<:raw",$imagefn) || die "Could not open image file $imagefn for reading: $!\n";
 binmode IN;
-open(OUT,">:raw",$dumpfn) || die "Could not open dump file $dumpfn for writing: $!\n";
+open(OUT,"+<:raw",$dumpfn) || die "Could not open dump file $dumpfn for writing: $!\n";
 binmode OUT;
-open(CLEANOUT,">:raw",$cleanfn) || die "Could not open dump file $cleanfn for writing: $!\n";
+open(CLEANOUT,"+<:raw",$cleanfn) || die "Could not open dump file $cleanfn for writing: $!\n";
 binmode CLEANOUT;
 
 my $ende=0;
 my $pagen=0;
 
-@ldpckey=ldpcauto($ecccoverage*8,$eccsize*8);
+@ldpckey=ldpcauto($ecccoverage*8+(($ECCcoversClearSA||$ECCcoversXORedSA)?$sasize*8 : 0),$eccsize*8) if($eccmode eq "LDPC");
 #print "LDPCKEY: ".scalar(@ldpckey)." ".length($ldpckey[0])."\n";
 
-
+if($thisshare<1)
+{
+  print "Pagesize: $pagesize\n";
+  print "Blocksize: $pagesperblock (=$blocksize Bytes)\n";
+  print "Datapos: ".join(",",@datapos)."\n";
+  print "Biterrors: $biterrors (bit errors per page)\n";
+  print "Data area total size per page: $sectors\n" if($thisshare<1);
+}
+print "Total shares: $totalshares This share: $thisshare\n";
 
 while(!$ende)
 {
@@ -284,7 +288,7 @@ while(!$ende)
   my $read=read IN,$in,$sectors;
   last if(!defined($read) || !$read);
 
-  if($pagen%$totalshares!=$thisshare)
+  if($totalshares>1 && ($pagen%$totalshares)!=$thisshare)
   {
     $pagen++;
     next;
@@ -359,7 +363,7 @@ while(!$ende)
       substr($out,$_,$sasize)^=substr($xorpattern[$pagen % $pagesperblock],$_,$sasize);
     }
   }
- 
+
 
   my $outputoffset=calcoffset($pagen)*$pagesize;
 
@@ -390,6 +394,7 @@ my $outsize=$pagen*$pagesize;
 
 if(($outsize % $blocksize)>0) # Is the last block filled?
 {
+  print "Filling last block with pages with spaces\n";
   my $todo=$blocksize-($outsize % $blocksize);
   print OUT ' ' x $todo; # Fill the last block
   $outsize+=$todo;
@@ -406,7 +411,7 @@ print "Input Image Size: $size Bytes ".($size/1000/1000/1000)." GB $nsectors Sec
 
 print "Output Dump Size: $outsize Bytes ".($outsize/1000/1000/1000)." GB $pagen Pages with pagesize $pagesize -> $dumpfn\n";
 
-if($parallel)
+if($totalshares>1)
 {
   open OUT,">$dumpfn.$thisshare.done";
   print OUT "done";
