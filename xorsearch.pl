@@ -6,6 +6,12 @@ use Getopt::Long;
 my $maximumblocks=49;
 
 
+# Some ideas for improvement:
+# Adding in the 77 patterns and the FF patterns into the final calculation
+# Switching to single-stepping when needed
+# Doing the XOR between the 5 patterns upfront to speed up the performance
+
+
 if(scalar(@ARGV)<3)
 {
   print "Usage: $0 <dumpfile.dump> <xorpattern.xor> <casefile.case>\n";
