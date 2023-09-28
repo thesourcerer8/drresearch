@@ -93,7 +93,7 @@ int main(int argc, char* argv[])
     {
       if(GetLastError()==ERROR_SECTOR_NOT_FOUND)
       {
-        printf("Reached last sector.");
+        printf("Reached last sector.\n");
         wearedone=1;
       }
       else
@@ -112,6 +112,7 @@ int main(int argc, char* argv[])
 
   SetFilePointer(hDevice,0,NULL,FILE_BEGIN);
   sector=0;
+  wearedone=0;
   printf("Creating new pattern\n");
   while(!wearedone)
   { 
