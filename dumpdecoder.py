@@ -106,7 +106,7 @@ with open(inputdump,"rb") as dump:
 				#print("Amount of Bit Errors (uncoded) : %d " % ErrorUncoded)
 				
 				#MSA algorithm
-				for n in range(0,200):
+				for n in range(0,20):
 		    
 					decoded, y = decoder.iterateMinimumSumAlgorithm()
 					ErrorSPA = np.sum(y != x)
