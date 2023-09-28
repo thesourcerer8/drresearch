@@ -3,6 +3,13 @@
 //#include <iostream>
 //using namespace std;
 
+
+// Converts Gigabytes to LBA Sectors
+long long idema_gb2lba(long long advertised)
+{
+  return((97696368) + (1953504 * (advertised - 50)));
+}
+
 int main(int argc, char* argv[])
 {
   DWORD Ropen;
@@ -13,24 +20,42 @@ int main(int argc, char* argv[])
   long long targetsize=-1;
   BYTE pWriteBlock[4096] = { 0 };
   BYTE *pWriteSector=pWriteBlock;
- 
+  int DATAsize=4096;
+
   if(argc<2)
   {
-    fprintf(stderr,"Usage: initpattern.exe \\\\.\\PhysicalDrive1 [size in MB]\n");
+    fprintf(stderr,"Usage: initpattern.exe \\\\.\\PhysicalDrive1 [size in MB] [data area size in Byte]\n");
     system("wmic diskdrive list brief");
     return -1;
   }
   if(argc>2)
   {
-    targetsize=atol(argv[2])<<11;
-    printf("Setting the target size to %lld MB / %lld sectors / %lld GB.\n",targetsize>>11,targetsize,targetsize>>30);
+    if(strlen(argv[2])>2 && !strcmp(argv[2]+strlen(argv[2])-2,"GB"))
+    {
+      sscanf(argv[2],"%lldGB",&targetsize);
+      targetsize=idema_gb2lba(targetsize)*512;
+      printf("Setting the target size to %lld MB / %lld sectors / %lld GiB.\n",targetsize>>11,targetsize,targetsize>>30);
+    }
+    else
+    {    
+      targetsize=atol(argv[2])<<11;
+      printf("Setting the target size to %lld MB / %lld sectors / %lld GiB.\n",targetsize>>11,targetsize,targetsize>>30);
+    }
   }
+  if(argc>3)
+  {
+    DATAsize=atoi(argv[3]);
+    printf("Setting the DATA size to %d\n",DATAsize);
+  }
+
+  int eccreal=(DATAsize/512)+1;
+  int majority=7;
 
   long long border0=512*1024*2; // 512MB pattern
   long long border7=1024*1024*2; // 512MB 00
   long long borderf=1280*1024*2; // 256 MB 77
   long long borderphi=1536*1024*2; // 256 MB FF
-
+  long long borderecc=borderphi+eccreal*eccreal*majority*DATAsize*8+1; // lots of ECC (for 512B DA we dont need much, for 4KB we need 11GB, for 8GB a lot more)
 
   HANDLE hDevice = CreateFileA(argv[1], GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
 
@@ -109,6 +134,31 @@ int main(int argc, char* argv[])
       memset(pWriteSector+strlen((const char*)pWriteSector),'x',510-strlen((const char*)pWriteSector));
       pWriteSector[510] = '\n';
       pWriteSector[511] = 0x00;
+      if(sector>=borderphi && sector<borderecc)
+      {
+        int patternsize=eccreal*eccreal*majority;
+	long long offset=sector-borderphi;
+	long long pattern=offset/patternsize;
+	int patternpos=offset%eccreal;
+	int patternmod=(offset%(eccreal*eccreal))/eccreal;
+	int bittargetsector=(pattern>>3)>>9;
+	//printf("\npatternsize:%d\noffset:%d\npattern:%d\npatternpos:%d\nbittargetsector:%d\n",patternsize,offset,pattern,patternpos,bittargetsector);
+        if(patternpos>0)
+        {
+          sprintf((char*)pWriteSector,"P%011llX%04X",pattern,patternpos);
+	  for(int tgt=16;tgt<512;tgt+=16)
+          {
+            memcpy(pWriteSector+tgt,pWriteSector,16);
+	  }
+          if(bittargetsector==(patternpos-1) && patternmod)
+          {
+            int bittargetbyte=(pattern>>3) & 0x1FF;
+	    int bittargetbit=pattern&7;
+	    pWriteSector[bittargetbyte]^=1<<bittargetbit;
+          }
+        }		
+      }
+
     }
     if (((sector&7)==7) && !WriteFile(hDevice, pWriteBlock, 4096, &Ropen, NULL)) 
     {
