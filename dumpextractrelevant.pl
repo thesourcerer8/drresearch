@@ -41,6 +41,15 @@ if(open XML,"<$patternxmlfn")
   close XML;
 }
 
+our $xorkey="";
+if(open XOR,"<$ARGV[0].xor")
+{
+  binmode XOR;
+  undef $/;
+  $xorkey=<XOR>;
+  close XOR; 
+}
+
 print "Final configuration used:\nECC-start: Sector $eccstart\nECC-end: Sector $eccend\nECC-coverage: $ecccoverage Bytes\n";
 
 
@@ -89,6 +98,8 @@ while(!$ende)
   my $in="";
   my $read=read IN,$in,$pagesize;
   last if(!defined($read) || !$read);
+
+  $in^=substr($xorkey,$pagesize*($sector % $pagesperblock),$pagesize) if(length($xorkey));
   my $sector=$in;
 
   my $offset=0;
