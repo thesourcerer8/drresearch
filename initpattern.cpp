@@ -113,7 +113,7 @@ int main(int argc, char* argv[])
       }
     }
     sector++;
-    if(!(sector&0xffff))
+    if(!(sector&0x1ffff))
     {
       printf("Status: Sector %lld (%lld GB)\n",sector,sector/2/1024/1024);
     }
@@ -185,7 +185,7 @@ int main(int argc, char* argv[])
       }
     }
     sector++;
-    if(!(sector&0xffff))
+    if(!(sector&0x1ffff))
     {
       printf("Status: Sector %lld (%lld GB)\n",sector,sector/2/1024/1024);
     }
@@ -193,7 +193,8 @@ int main(int argc, char* argv[])
   }
 
   DeviceIoControl(hDevice, FSCTL_UNLOCK_VOLUME, NULL, 0, NULL, 0, &Ropen, NULL);
-  printf("We are done.\n");
+  printf("We are done writing the pattern.\n");
+  printf("Please wait a couple of seconds to make sure everything has been written, then eject the drive properly.\nThen connect the NAND flash and dump it.\n");
   return 0;
 }
 
