@@ -3,8 +3,8 @@ use strict;
 
 if(scalar(@ARGV)<3)
 {
-  print "Usage: $0 <input.dump> <output.dump> <pattern.xml>\n";
-  print "Usage: $0 <input.dump> <output.dump> <pagesize>\n";
+  print "Usage: $0 <input.dump> <output.dump> <pattern.xml> <casefile.case>\n";
+  print "Usage: $0 <input.dump> <output.dump> <pagesize> <casefile.case>\n";
   print "This tool searches the necessary parts from a dump to extract the parameters and writes it to the output.dump\n";
   print "Afterwards you can then upload the output.dump and send it to our reconstruction service\n";
   exit;
@@ -14,6 +14,7 @@ if(scalar(@ARGV)<3)
 my $imagefn=$ARGV[0];
 my $dumpfn=$ARGV[1];
 my $patternxmlfn=$ARGV[2];
+my $casefn=$ARGV[3];
 
 print "Extracting all relevant pages from a dump file \"$imagefn\" into an output dump \"$dumpfn\"\n";
 
@@ -25,7 +26,7 @@ $pagesize=$1 if($ARGV[1]=~m/\((\d+)p\)/);
 
 my $ecccoverage=1024;
 
-if(open XML,"<$ARGV[2]")
+if(open XML,"<$patternxmlfn")
 {
   while(<XML>)
   {
@@ -196,6 +197,23 @@ for(my $lba=$eccstart; $lba<=$eccend; $lba+=$inc)
 my $percent=($found+$missing)?int(100*$found/($found+$missing)) : 0;
 print "Found: $found Missing: $missing => $percent % found (Range searched: $eccstart..$eccend inc $inc)\n";
 print "Missing: ".join(",",@missings)."\n" if($missing && $missing<20);
-print "This dump is incomplete or has not been properly XOR decoded yet. Please check the size and make sure it has been XOR decoded properly. If that doesn't help, please provide the whole dump.\n" if($percent<99);
+if($percent<99)
+{
+  print "This dump is incomplete or has not been properly XOR decoded yet.\n";
+  print "Trying to automatically XOR decode it now:\n";
+  system "perl xorsearch.pl \"$imagefn\" \"$imagefn.xor\" \"$casefn\"";
+  if(-f "$imagefn.xor")
+  {
+    print "XOR key was found, now trying again.\n";
+    my $cmd="perl \"$0\" \"".join("\" \"",@ARGV)."\" ";
+    system $cmd;
+  }
+  else
+  {
+    print "The XOR key could not be found automatically, please check whether the pattern has been written to the disk/card correctly, and whether the geometry of the dump is correct\n";
+    print "Please check the size and make sure it has been XOR decoded properly. If that doesn't help, please provide the whole dump.\n";
+  }
+}
+
 #print "Page Offsets for DATA: ".join(",",sort keys(%posfound))."\n";
 print STDERR "Done.\n";
