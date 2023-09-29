@@ -57,6 +57,16 @@ int main(int argc, char* argv[])
   long long borderphi=1536*1024*2; // 256 MB FF
   long long borderecc=borderphi+eccreal*eccreal*majority*DATAsize*8+1; // lots of ECC (for 512B DA we dont need much, for 4KB we need 11GB, for 8GB a lot more)
 
+  if(targetsize<borderecc*512)
+  {
+    printf("WARNING: Not all of the pattern will be in the dump! Enlarge the dump size to at least %lld MB or change the dump configuration\n",borderecc/2/1024);
+  }
+  if((DATAsize%512)>0)
+  {
+    printf("ERROR: The datasize is not a multiple of 512 Bytes, please check the parameters!\n");
+    exit(-1);
+  }
+	
   HANDLE hDevice = CreateFileA(argv[1], GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
 
   if (hDevice == INVALID_HANDLE_VALUE)
@@ -165,7 +175,7 @@ int main(int argc, char* argv[])
     {
       if(GetLastError()==ERROR_SECTOR_NOT_FOUND)
       {
-        printf("Reached last sector.");
+        printf("Reached last sector.\n");
         wearedone=1;
       }
       else
