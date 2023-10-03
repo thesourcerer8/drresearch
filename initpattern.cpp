@@ -20,7 +20,7 @@ int main(int argc, char* argv[])
   long long targetsize=-1;
   BYTE pWriteBlock[4096] = { 0 };
   BYTE *pWriteSector=pWriteBlock;
-  int DATAsize=4096;
+  int DATAsize=8192;
 
   if(argc<2)
   {
@@ -60,6 +60,12 @@ int main(int argc, char* argv[])
   if(targetsize<borderecc*512)
   {
     printf("WARNING: Not all of the pattern will be in the dump! Enlarge the dump size to at least %lld MB or change the dump configuration\n",borderecc/2/1024);
+    while(targetsize<borderecc*512)
+    {
+      DATAsize>>=1;
+      borderecc=borderphi+eccreal*eccreal*majority*DATAsize*8+1;
+    }
+    printf("We have automatically adjusted the DATA size to %d to fit into the device/image.\n",DATAsize);
   }
   if((DATAsize%512)>0)
   {
