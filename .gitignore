@@ -40,4 +40,4 @@ __pycache__/
 
 *.dump
 *.hex
-
+*.img
