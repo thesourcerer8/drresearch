@@ -14,7 +14,7 @@ my $xmlfn=$mydev.".xml"; $xmlfn=~s/\//_/g;
 open OUT,">:raw",$mydev; # XXXXXXX YOU HAVE TO CHANGE THIS PARAMETER, be careful that you do use your harddisk!
 
 
-my $DATAsize=$ARGV[2] || 1024;
+my $DATAsize=$ARGV[2] || 8192;
 my $eccreal=($DATAsize/512)+1;
 my $majority=7;
 
@@ -40,14 +40,19 @@ if($ARGV[1])
   $size=$1*1024*1024 if($ARGV[1]=~m/^(\d+)$/i);
   if($size<$borderecc*512)
   {
-    print "WARNING: Not all of the pattern will be in the dump! Enlarge the dump size to at least ".int($borderecc/2/1024)." or change the dump configuration\n";
+    print "WARNING: Not all of the pattern will be in the dump! Enlarge the image size to at least ".int($borderecc/2/1024)." or change the image configuration\n";
+    while($size<$borderecc*512)
+    {
+      $DATAsize>>=1;
+      $borderecc=$borderphi+$eccreal*$eccreal*$majority*$DATAsize*8+1; # lots of ECC (for 512B DA we dont need much, for 4KB we need 11 GB)
+    }
+    print "Automatically changing the data area size to $DATAsize to fit into the device/image file.\n";
   }
   if(($DATAsize%512)>0)
   {
     print "ERROR: The datasize is not a multiple of 512 Bytes, please check the parameters!\n";
     exit(-1);
   }
-
   $overwritten=0;
 }
 else
