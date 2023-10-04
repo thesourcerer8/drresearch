@@ -86,13 +86,13 @@ printf("Patching -%s- \n",patch);
 printf("Please assign the page structure. For example DA SA ECC and its combinations(caps))\n\n");
 
 printf("Enter the first element in the page \n");
-scanf(" %s", FIRST_ELEMENT);
+scanf(" %99s", FIRST_ELEMENT);
 
 printf("Enter the second element in the page \n");
-scanf(" %s", SECOND_ELEMENT);
+scanf(" %99s", SECOND_ELEMENT);
 
 printf("Enter the third element in the page \n");
-scanf(" %s", THIRD_ELEMENT);
+scanf(" %99s", THIRD_ELEMENT);
 
 
 

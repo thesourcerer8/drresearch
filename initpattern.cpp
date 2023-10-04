@@ -1,8 +1,5 @@
 #include <windows.h>
 #include <stdio.h>
-//#include <iostream>
-//using namespace std;
-
 
 // Converts Gigabytes to LBA Sectors
 long long idema_gb2lba(long long advertised)
@@ -13,14 +10,14 @@ long long idema_gb2lba(long long advertised)
 int main(int argc, char* argv[])
 {
   DWORD Ropen;
-  //DWORD LOWpart=0;
-  //DWORD HIGHpart=0;
   int wearedone=0;
   long long sector=0;
-  long long targetsize=-1;
+  long long targetsize=-1; // in Bytes
   BYTE pWriteBlock[4096] = { 0 };
   BYTE *pWriteSector=pWriteBlock;
-  int DATAsize=8192;
+  int DATAsize=8192; // in Bytes
+  char xmlfn[1000]="pattern.xml";
+  FILE*handle=NULL;
 
   if(argc<2)
   {
@@ -41,6 +38,7 @@ int main(int argc, char* argv[])
       targetsize=atol(argv[2])<<11;
       printf("Setting the target size to %lld MB / %lld sectors / %lld GiB.\n",targetsize>>11,targetsize,targetsize>>30);
     }
+    sprintf(xmlfn,"%s.xml",argv[1]);
   }
   if(argc>3)
   {
@@ -49,29 +47,13 @@ int main(int argc, char* argv[])
   }
 
   int eccreal=(DATAsize/512)+1;
-  int majority=7;
+  int majority=5;
 
   long long border0=512*1024*2; // 512MB pattern
   long long border7=1024*1024*2; // 512MB 00
   long long borderf=1280*1024*2; // 256 MB 77
   long long borderphi=1536*1024*2; // 256 MB FF
   long long borderecc=borderphi+eccreal*eccreal*majority*DATAsize*8+1; // lots of ECC (for 512B DA we dont need much, for 4KB we need 11GB, for 8GB a lot more)
-
-  if(targetsize<borderecc*512)
-  {
-    printf("WARNING: Not all of the pattern will be in the dump! Enlarge the dump size to at least %lld MB or change the dump configuration\n",borderecc/2/1024);
-    while(targetsize<borderecc*512)
-    {
-      DATAsize>>=1;
-      borderecc=borderphi+eccreal*eccreal*majority*DATAsize*8+1;
-    }
-    printf("We have automatically adjusted the DATA size to %d to fit into the device/image.\n",DATAsize);
-  }
-  if((DATAsize%512)>0)
-  {
-    printf("ERROR: The datasize is not a multiple of 512 Bytes, please check the parameters!\n");
-    exit(-1);
-  }
 	
   HANDLE hDevice = CreateFileA(argv[1], GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
 
@@ -80,23 +62,44 @@ int main(int argc, char* argv[])
     hDevice = CreateFileA(argv[1], GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, 0, NULL);
     if (hDevice == INVALID_HANDLE_VALUE)
     {
-      printf("CreateFileA returned an error when trying to open the file: %ld", GetLastError());
+      printf("CreateFileA returned an error when trying to open the file: %ld\n", GetLastError());
       return 0;
     }
   }
   printf("Opened successfully\n");
 
-  //sysopen(OUT,
-  //seek(OUT,0,2); 
-  //my $size=tell(OUT);
-  //print "Size: $size Bytes ".($size/1000/1000/1000)." GB\n";
-
-
   DeviceIoControl(hDevice, FSCTL_LOCK_VOLUME, NULL, 0, NULL, 0, &Ropen, NULL);
 
-  //LOWpart=GetFileSize(hDevice,&HIGHpart);
-  //printf("HIGH: %ld LOW: %ld\n",HIGHpart,LOWpart); // Does not work
-  
+  DWORD lpBytesReturned=0;
+  DeviceIoControl(hDevice,IOCTL_DISK_GET_LENGTH_INFO,NULL,0,pWriteBlock,sizeof(pWriteBlock),&lpBytesReturned,NULL);
+  if(lpBytesReturned==8)
+  {
+    targetsize=*(unsigned long long *)pWriteBlock;
+    printf("Device Size: %lld (%lldGB)\n",targetsize,targetsize/1000/1000/1000);
+  }
+  else
+  {
+    printf("Image Size: %lld (%lldGB)\n",targetsize,targetsize/1000/1000/1000);
+  }
+
+  if(targetsize<(borderecc<<9))
+  {
+    printf("WARNING: The pattern required for a data size of %d is too large to fit into this device/image! Enlarge the image size to at least %lld MB or change the pattern configuration\n",DATAsize,borderecc/2/1024);
+    while(targetsize<(borderecc<<9) && DATAsize>512)
+    {
+      DATAsize/=2;
+      eccreal=(DATAsize/512)+1;
+      borderecc=borderphi+eccreal*eccreal*majority*DATAsize*8+1;
+      //printf("Trying Datasize:%d borderecc:%lld targetsize:%lld\n",DATAsize,(borderecc<<9)/1000/1000,targetsize/1000/1000);
+    }
+    printf("We have automatically adjusted the DATA size to %d to fit into the device/image.\n",DATAsize);
+  }
+  if((DATAsize%512)>0)
+  {
+    printf("ERROR: The datasize is not a multiple of 512 Bytes, please check the parameters!\n");
+    exit(-1);
+  }
+
   printf("Creating old pattern\n");
   while(!wearedone)
   {
@@ -119,11 +122,11 @@ int main(int argc, char* argv[])
       }
     }
     sector++;
-    if(!(sector&0x1ffff))
+    if(!(sector&0x3ffff))
     {
       printf("Status: Sector %lld (%lld GB)\n",sector,sector/2/1024/1024);
     }
-    if(sector==targetsize) wearedone=1;
+    if((sector<<9)>=targetsize) wearedone=1;
   }
 
   SetFilePointer(hDevice,0,NULL,FILE_BEGIN);
@@ -175,7 +178,6 @@ int main(int argc, char* argv[])
           }
         }		
       }
-
     }
     if (((sector&7)==7) && !WriteFile(hDevice, pWriteBlock, 4096, &Ropen, NULL)) 
     {
@@ -191,17 +193,27 @@ int main(int argc, char* argv[])
       }
     }
     sector++;
-    if(!(sector&0x1ffff))
+    if(!(sector&0x3ffff))
     {
       printf("Status: Sector %lld (%lld GB)\n",sector,sector/2/1024/1024);
     }
-    if(sector==targetsize) wearedone=1;
+    if((sector<<9)>=targetsize) wearedone=1;
   }
 
   DeviceIoControl(hDevice, FSCTL_UNLOCK_VOLUME, NULL, 0, NULL, 0, &Ropen, NULL);
+  CloseHandle(hDevice);
   printf("We are done writing the pattern.\n");
+  handle=fopen(xmlfn,"w");
+  fprintf(handle,"<root overwritten='1'>\n<device>%s</device>\n",argv[1]);
+  fprintf(handle,"<pattern type='sectornumber' begin='0' end='%lld' size='%lld'/>\n",border0-1,border0);
+  fprintf(handle,"<pattern type='XOR-00' begin='%lld' end='%lld' size='%lld'/>\n",border0,border7-1,border7-border0);
+  fprintf(handle,"<pattern type='XOR-77' begin='%lld' end='%lld' size='%lld'/>\n",border7,borderf-1,borderf-border7);
+  fprintf(handle,"<pattern type='XOR-FF' begin='%lld' end='%lld' size='%lld'/>\n",borderf,borderphi-1,borderphi-borderf);
+  fprintf(handle,"<pattern type='ECC' begin='%lld' end='%lld' size='%lld' coverage='%d' majority='%d'/>\n",borderphi,borderecc-1,borderecc-borderphi,DATAsize,majority);
+  fprintf(handle,"<pattern type='sectornumber' begin='%lld' end='%lld' size='%lld'/>\n",borderecc,(targetsize/512)-1,(targetsize/512)-borderecc);
+  fprintf(handle,"</root>\n");
+  fclose(handle);
+  printf("The configuration has been written to %s please provide this file too in the end.\n",xmlfn);
   printf("Please wait a couple of seconds to make sure everything has been written, then eject the drive properly.\nThen connect the NAND flash and dump it.\n");
   return 0;
 }
-
-
