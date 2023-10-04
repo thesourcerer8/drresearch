@@ -4,7 +4,6 @@ use strict;
 if(scalar(@ARGV)<3)
 {
   print "Usage: $0 <input.dump> <output.dump> <pattern.xml> <casefile.case>\n";
-  print "Usage: $0 <input.dump> <output.dump> <pagesize> <casefile.case>\n";
   print "This tool searches the necessary parts from a dump to extract the parameters and writes it to the output.dump\n";
   print "Afterwards you can then upload the output.dump and send it to our reconstruction service\n";
   exit;
@@ -21,9 +20,8 @@ print "Extracting all relevant pages from a dump file \"$imagefn\" into an outpu
 my $pagesize=4000; # Bytes
 my $eccstart=3145728;
 my $eccend=3614367;
-$pagesize=$1 if($ARGV[2]=~m/^(\d+)$/);
 $pagesize=$1 if($ARGV[1]=~m/\((\d+)p\)/);
-
+our $pagesperblock=128;
 my $ecccoverage=1024;
 
 if(open XML,"<$patternxmlfn")
