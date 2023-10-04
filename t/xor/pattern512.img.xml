@@ -1,0 +1,9 @@
+<root overwritten='0'>
+<device>pattern512.dump</device>
+<pattern type='sectornumber' begin='0' end='1048575' size='1048576'/>
+<pattern type='XOR-00' begin='1048576' end='2097151' size='1048576'/>
+<pattern type='XOR-77' begin='2097152' end='2621439' size='524288'/>
+<pattern type='XOR-FF' begin='2621440' end='3145727' size='524288'/>
+<pattern type='ECC' begin='3145728' end='3260416' size='114689' coverage='512' majority='7'/>
+<pattern type='sectornumber' begin='3260417' end='4095999' size='835583'/>
+</root>

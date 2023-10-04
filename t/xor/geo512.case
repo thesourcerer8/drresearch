@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<Project>
+  <info>This is an artifical case file for a small storage medium, designed for testing the XOR behaviour</info>
+  <Records>
+    <Record StructureDefinitionName="SA" StartAddress="0" StopAddress="7" />
+    <Record StructureDefinitionName="Data area" StartAddress="8" StopAddress="519" />
+    <Record StructureDefinitionName="ECC" StartAddress="520" StopAddress="619" />
+    <Record StructureDefinitionName="SA" StartAddress="620" StopAddress="627" />
+    <Record StructureDefinitionName="Data area" StartAddress="628" StopAddress="1139" />
+    <Record StructureDefinitionName="ECC" StartAddress="1140" StopAddress="1239" />
+  </Records>
+  <Records>
+    <Record StructureDefinitionName="Page" StartAddress="0" StopAddress="1239" />
+  </Records>
+  <StructureDefinition Name="Page" Length="2" IsFindStructure="False">
+  <Page_size>1240</Page_size>
+  <Nominal_block_size>19840</Nominal_block_size>
+  <Actual_block_size>19840</Actual_block_size>
+</Project>

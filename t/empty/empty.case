@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<Project>
+  <info>This is an artifical case file for an extremely small storage medium, designed for testing the decoder directly with a pre-generated key</info>
+  <Records>
+  </Records>
+  <Records>
+    <Record StructureDefinitionName="Page" StartAddress="0" StopAddress="19" />
+  </Records>
+  <StructureDefinition Name="Page" Length="2" IsFindStructure="False">
+  <Page_size>20</Page_size>
+  <Nominal_block_size>10</Nominal_block_size>
+</Project>
