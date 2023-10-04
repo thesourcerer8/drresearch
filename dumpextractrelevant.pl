@@ -99,7 +99,7 @@ while(!$ende)
   my $read=read IN,$in,$pagesize;
   last if(!defined($read) || !$read);
 
-  $in^=substr($xorkey,$pagesize*($sector % $pagesperblock),$pagesize) if(length($xorkey));
+  $in^=substr($xorkey,$pagesize*($pagen % $pagesperblock),$pagesize) if(length($xorkey));
   my $sector=$in;
 
   my $offset=0;
