@@ -7,6 +7,24 @@ long long idema_gb2lba(long long advertised)
   return((97696368) + (1953504 * (advertised - 50)));
 }
 
+char errorbuffer[2000];
+const char *noerrorbuffer="No Error.";
+
+const char *GetLastErrorAsString()
+{
+  DWORD errorMessageID = GetLastError();
+  if(errorMessageID==0)
+  {
+    return noerrorbuffer;
+  }
+  LPSTR messageBuffer = nullptr;
+  size_t size=FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+  memcpy(errorbuffer,messageBuffer,size);
+  errorbuffer[size]=0;
+  LocalFree(messageBuffer);
+  return errorbuffer;  
+}
+
 int main(int argc, char* argv[])
 {
   DWORD Ropen;
@@ -100,7 +118,7 @@ int main(int argc, char* argv[])
     exit(-1);
   }
 
-  printf("Creating old pattern\n");
+  printf("Creating old pattern for recovering the FTL\n");
   while(!wearedone)
   {
     pWriteSector=pWriteBlock+((sector&7)<<9); // We set the pointer to the current sector inside the 4096 Byte WriteBlock
@@ -117,7 +135,8 @@ int main(int argc, char* argv[])
       }
       else
       {
-        printf("Error when writing: %ld", GetLastError());  
+	DWORD errorid=GetLastError();      
+        printf("Error when writing: %ld - %s", errorid,GetLastErrorAsString());  
         return 0;
       }
     }
@@ -132,7 +151,7 @@ int main(int argc, char* argv[])
   SetFilePointer(hDevice,0,NULL,FILE_BEGIN);
   sector=0;
   wearedone=0;
-  printf("Creating new pattern\n");
+  printf("Creating new pattern for recovering XOR and LDPC\n");
   while(!wearedone)
   { 
     pWriteSector=pWriteBlock+((sector&7)<<9); // We set the pointer to the current sector inside the 4096 Byte WriteBlock
