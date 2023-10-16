@@ -73,6 +73,7 @@ my $nblocks=$size/512;
 
 if($overwritten)
 {
+  print "First stage pattern for FTL recovery\n";	
   foreach my $block (0 .. $size/512)
   {
     my $data=sprintf("|Block#%012d (0x%08X) Byte: %020d Pos: %10d MB\n***OVERWRITTEN",$block,$block,$block*512,$block>>11);
@@ -85,6 +86,7 @@ if($overwritten)
     my $percent=int(100*$block/$nblocks);
     print STDERR "$block $percent\%\n" if(!($block %100000));
   }
+  print "Second stage pattern for LDPC and XOR recovery\n";
 }
 
 seek(OUT,0,0);
