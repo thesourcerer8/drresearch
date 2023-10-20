@@ -30,6 +30,11 @@ foreach my $fn(@fns)
   $pagesize=$1/8 if($fn=~m/hmatrix_n(\d+)[_\.]/);
  
   my $fs=-s $fn;
+  if(!defined($fs) || $fs <=0)
+  {
+    print STDERR "Could not load file or file is empty: $fn\n";
+    next;
+  }
   my $bs=int($fs/$pagesize);
   my $rest=$fs % $pagesize;
 
