@@ -6,7 +6,7 @@ time perl ../../lfsr.pl 1240 16
 echo "We simulate writing the pattern to a NAND flash and dumping it with 8 parallel processes"
 time perl ../../controllersim.pl pattern512.img "simulated(1240p).dump" "simulatedclean(1240p).dump" geo512.case -j 8 --XORfile 'lfsr_(1240p)_16b.xor' --ECCcoversClearSA --XORcoversECC --XORcoversSA
 echo "We extract the relevant parts"
-time perl ../../dumpextractrelevant.pl "simulated(1240p).dump" "upload(1240p).dump" pattern512.img.xml
+time perl ../../dumpextractrelevant.pl "simulated(1240p).dump" "upload(1240p).dump" pattern512.img.xml geo512.case
 echo "We extract the generator matrix from the dump"
 time perl ../../dump2g.pl upload\(1240p\).dump output.g pattern512.img.xml 
 
