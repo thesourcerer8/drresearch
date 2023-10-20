@@ -1,5 +1,7 @@
 #!/usr/bin/perl -w
 use strict;
+use File::Basename;
+use List::MoreUtils qw(uniq);
 
 if(scalar(@ARGV)<3)
 {
@@ -23,6 +25,15 @@ my $eccend=3614367;
 $pagesize=$1 if($ARGV[1]=~m/\((\d+)p\)/);
 our $pagesperblock=128;
 my $ecccoverage=1024;
+my $blocksize=$pagesize*$pagesperblock; # !!! NEEDS TO BE ADAPTED LATER ON IN CASE THE VALUES CHANGED
+
+my @datapos=(0,1500);
+my $datasize=1024;
+my @sapos=(3512);
+my $sasize=8;
+my @eccpos=(1024,2524);
+my $eccsize=476;
+
 
 if(open XML,"<$patternxmlfn")
 {
@@ -38,6 +49,47 @@ if(open XML,"<$patternxmlfn")
   }
   close XML;
 }
+
+
+if(open CASE,"<$casefn")
+{
+  print "Reading from $casefn\n";
+  my @mydatapos=();
+  my @myeccpos=();
+  my @mysapos=();
+  while(<CASE>)
+  {
+    $pagesize=$1 if(m/<Page_size>(\d+)<\/Page_size>/);
+    if(m/<Actual_block_size>(\d+)<\/Actual_block_size>/) # Should we use Nominal or Actual?
+    {
+      $blocksize=$1;
+      $pagesperblock=$blocksize/$pagesize;
+    }
+    if(m/<Record StructureDefinitionName="(DA|Data area)" StartAddress="(\d+)" StopAddress="(\d+)" \/>/i)
+    {
+      print "Adding $2 to datapos\n";
+      push @mydatapos,$2;
+      $datasize=$3-$2+1;
+      $ecccoverage=$datasize;
+    }
+    if(m/<Record StructureDefinitionName="ECC" StartAddress="(\d+)" StopAddress="(\d+)" \/>/)
+    {
+      push @myeccpos,$1;
+      $eccsize=$2-$1+1;
+    }
+    if(m/<Record StructureDefinitionName="SA" StartAddress="(\d+)" StopAddress="(\d+)" \/>/)
+    {
+      push @mysapos,$1;
+      $sasize=$2-$1+1;
+    }
+    @datapos=uniq @mydatapos;
+    @eccpos=uniq @myeccpos;
+    @sapos=uniq @mysapos;
+  }
+  #$sectors=scalar(@datapos)*$datasize;
+  close CASE;
+}
+
 
 our $xorkey="";
 if(open XOR,"<$ARGV[0].xor")
@@ -96,6 +148,16 @@ while(!$ende)
   my $in="";
   my $read=read IN,$in,$pagesize;
   last if(!defined($read) || !$read);
+
+  if(0) #length($xorkey))
+  {
+    print "pagen%pagesperblock: ".($pagen % $pagesperblock)."\n";
+    print "pagesperblock: $pagesperblock\n";
+    print "pagesize: $pagesize\n";
+    print "length xor: ".length($xorkey)."\n";
+    print "start: ".($pagesize*($pagen % $pagesperblock))."\n";
+    print "len part: ".length(substr($xorkey,$pagesize*($pagen % $pagesperblock),$pagesize))."\n";
+  }
 
   $in^=substr($xorkey,$pagesize*($pagen % $pagesperblock),$pagesize) if(length($xorkey));
   my $sector=$in;
@@ -210,7 +272,10 @@ if($percent<99)
 {
   print "This dump is incomplete or has not been properly XOR decoded yet.\n";
   print "Trying to automatically XOR decode it now:\n";
-  system "perl xorsearch.pl \"$imagefn\" \"$imagefn.xor\" \"$casefn\"";
+  my $xorsearch=__FILE__; $xorsearch=~s/\w+\.pl$/xorsearch.pl/;
+  my $cmd="perl \"$xorsearch\" \"$imagefn\" \"$imagefn.xor\" \"$casefn\"";
+  print "CMD: $cmd\n";
+  system $cmd;
   if(-f "$imagefn.xor")
   {
     print "XOR key was found, now trying again.\n";
