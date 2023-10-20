@@ -151,6 +151,7 @@ if(open CASE,"<$casefn")
 
 
 print "Pagesize: $pagesize\n";
+print "Pages per Block: $pagesperblock\n";
 print "Datapos: ".join(",",@datapos)."\n";
 
 open(IN,"<:raw",$dumpfn) || die "Could not open image file $dumpfn for reading: $!\n";
@@ -175,7 +176,7 @@ my $bestoffset=0;
 
 for(my $offset=0;$offset<$pagesize;$offset+=2)
 {
-  print "Loading block starts from dump...\n";
+  print "Loading block starts from dump at offset $offset...\n";
   for(my $pos=$offset;$pos<=($size-512);$pos+=$blocksize)
   {
     seek(IN,$pos,0);
