@@ -270,21 +270,21 @@ print "Found: $found Missing: $missing => $percent % found (Range searched: $ecc
 print "Missing: ".join(",",@missings)."\n" if($missing && $missing<20);
 if($percent<99)
 {
-  print "This dump is incomplete or has not been properly XOR decoded yet.\n";
-  print "Trying to automatically XOR decode it now:\n";
+  print "\nThis dump is incomplete or has not been properly XOR decoded yet.\n";
+  print "Trying to automatically XOR decode it now:\n\n";
   my $xorsearch=__FILE__; $xorsearch=~s/\w+\.pl$/xorsearch.pl/;
   my $cmd="perl \"$xorsearch\" \"$imagefn\" \"$imagefn.xor\" \"$casefn\"";
   print "CMD: $cmd\n";
   system $cmd;
   if(-f "$imagefn.xor")
   {
-    print "XOR key was found, now trying again.\n";
+    print "\nXOR key was found, now trying again.\n\n";
     my $cmd="perl \"$0\" \"".join("\" \"",@ARGV)."\" ";
     system $cmd;
   }
   else
   {
-    print "The XOR key could not be found automatically, please check whether the pattern has been written to the disk/card correctly, and whether the geometry of the dump is correct\n";
+    print "\nThe XOR key could not be found automatically, please check whether the pattern has been written to the disk/card correctly, and whether the geometry of the dump is correct\n";
     print "Please check the size and make sure it has been XOR decoded properly. If that doesn't help, please provide the whole dump.\n";
   }
 }
