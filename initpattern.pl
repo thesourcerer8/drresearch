@@ -132,5 +132,5 @@ foreach my $block (0 .. $size/512)
 close OUT;
 print STDERR "Pattern has been written to device/file $mydev\n";
 print STDERR "Pattern configuration has been written to the file $xmlfn in XML format.\n";
-print STDERR "You can now write the pattern image to the disk/pendrive/car with dd, HxD or PC3K, or use it in the controllersim.\n";
+print STDERR "You can now write the pattern image to the disk/pendrive/car with dd, balenaEtcher or PC3K, or use it in the controllersim.\n";
 print STDERR "Done.\n";
