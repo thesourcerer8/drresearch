@@ -1,5 +1,5 @@
 <root overwritten='0'>
-<device>pattern512.dump</device>
+<device>pattern512.img</device>
 <pattern type='sectornumber' begin='0' end='1048575' size='1048576'/>
 <pattern type='XOR-00' begin='1048576' end='2097151' size='1048576'/>
 <pattern type='XOR-77' begin='2097152' end='2621439' size='524288'/>
