@@ -8,7 +8,7 @@ time perl ../../controllersim.pl pattern512.img "simulated(1240p).dump" "simulat
 echo "We extract the relevant parts"
 time perl ../../dumpextractrelevant.pl "simulated(1240p).dump" "upload(1240p).dump" pattern512.img.xml geo512.case
 echo "We extract the generator matrix from the dump"
-time perl ../../dump2g.pl upload\(1240p\).dump output.g pattern512.img.xml 
+time perl ../../dump2g.pl upload\(1240p\).dump output.g pattern512.img.xml geo512.case
 
 echo "We verify the extracted matrix against the original matrix:"
 diff -q gmatrix_n12000_k8192_m3808.g output.g
