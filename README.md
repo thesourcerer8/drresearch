@@ -5,6 +5,9 @@ A collection of tools to generate patterns, manage XOR files, analyze dumps, vis
 # LDPC Recovery
 ![image](https://github.com/thesourcerer8/drresearch/assets/6086693/0e9b1fd8-f90d-4430-9abe-d708bfd58b6f)
 
+A video explaining the first steps:
+[![Video explanation of the process](https://img.youtube.com/vi/z93vdLnfoDs/0.jpg)](https://www.youtube.com/watch?v=z93vdLnfoDs)
+
 ## Requirements:
 A working donor with access to both the controller and to the NAND flash wired up
 Either PC3000-Flash, VNR or Flash-Extractor
