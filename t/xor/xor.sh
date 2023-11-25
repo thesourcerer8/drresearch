@@ -11,13 +11,13 @@ echo "We extract the generator matrix from the dump"
 time perl ../../dump2g.pl upload\(1240p\).dump output.g pattern512.img.xml geo512.case
 
 echo "We verify the extracted matrix against the original matrix:"
-diff -q gmatrix_n12000_k8192_m3808.g output.g
+diff -q gmatrix_n4896_k4096_m800.g output.g
 
 echo "Now we generate the decoder parameters"
-python3 ../../g2h.py gmatrix_n12000_k8192_m3808.g hmatrix_n12000_k8192_m3808.h
+python3 ../../g2h.py gmatrix_n4896_k4096_m800.g hmatrix_n4896_k4096_m800.h
 
 echo "Now we decode the dump (fix the bit errors):"
-python3 ../../dumpdecoder.py "simulated(1240p).dump" hmatrix_n12000_k8192_m3808.h geo512.case "corrected(1240p).dump"
+python3 ../../dumpdecoder.py "simulated(1240p).dump" hmatrix_n4896_k4096_m800.h geo512.case "corrected(1240p).dump"
 
 echo "Now we check the correct decoding:"
 diff -q "simulatedclean(1240p).dump" "corrected(1240p).dump"
