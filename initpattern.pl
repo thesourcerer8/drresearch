@@ -11,8 +11,17 @@ if(!scalar(@ARGV))
 my $mydev=($ARGV[0] || "/dev/sdx");
 my $xmlfn=$mydev.".xml"; $xmlfn=~s/\//_/g;
 
-open OUT,">:raw",$mydev; # XXXXXXX YOU HAVE TO CHANGE THIS PARAMETER, be careful that you do use your harddisk!
 
+if(!-w $mydev)
+{
+  die "Cannot open device/file $mydev for writing!\n";
+}
+
+open $OUT,">:raw",$mydev;
+if(!defined($OUT))
+{
+  die "Could not open device/file $mydev for writing: $!\n";
+}
 
 my $DATAsize=$ARGV[2] || 8192;
 my $eccreal=($DATAsize/512)+1;
@@ -26,6 +35,7 @@ my $borderecc=$borderphi+$eccreal*$eccreal*$majority*$DATAsize*8+1; # lots of EC
 # And at the end we have the pattern again
 
 my $overwritten=1;
+my $size=undef;
 
 sub idema_gb2lba($) # ($GB)
 {
@@ -33,6 +43,7 @@ sub idema_gb2lba($) # ($GB)
   my $LBAcounts = (97696368) + (1953504 * ($AdvertisedCapacity - 50));
   return($LBAcounts);
 }
+
 
 if($ARGV[1])
 {
@@ -57,15 +68,46 @@ if($ARGV[1])
 }
 else
 {
-  seek(OUT,0,2); 
-  my $size=tell(OUT);
-  seek(OUT,0,0);
+  seek($OUT,0,2);
+  $size=tell($OUT);
+  print "Size of the device: $size\n";
+  seek($OUT,0,0);
   $overwritten=1;
 }
 
-open XML,">$xmlfn";
-print XML "<root overwritten='$overwritten'>\n<device>$ARGV[0]</device>\n<pattern type='sectornumber' begin='0' end='".($border0-1)."' size='".($border0)."'/>\n<pattern type='XOR-00' begin='$border0' end='".($border7-1)."' size='".($border7-$border0)."'/>\n<pattern type='XOR-77' begin='$border7' end='".($borderf-1)."' size='".($borderf-$border7)."'/>\n<pattern type='XOR-FF' begin='$borderf' end='".($borderphi-1)."' size='".($borderphi-$borderf)."'/>\n<pattern type='ECC' begin='$borderphi' end='".($borderecc-1)."' size='".($borderecc-$borderphi)."' coverage='$DATAsize' majority='$majority'/>\n<pattern type='sectornumber' begin='$borderecc' end='".(int($size/512)-1)."' size='".(int($size/512)-$borderecc)."'/>\n</root>\n";
-close XML;
+if($size<$borderecc*512)
+{
+  print "WARNING: The pattern required for a data size of %d is too large to fit into this device/image and would be cut off! Enlarge the image size to at least ".int($borderecc/2/1024)." or change the pattern configuration\n";
+  while($size<($borderecc<<9) && $DATAsize>512 && (($DATAsize%1024)==0))
+  {
+    $DATAsize/=2;
+    $eccreal=($DATAsize/512)+1;
+    $borderecc=$borderphi+$eccreal*$eccreal*$majority*$DATAsize*8+1;
+    #print "Trying Datasize:$DATAsize borderecc:".(($borderecc<<9)/1000/1000) MB targetsize:".(($size/1000/1000))." MB\n";
+  }
+  print "We have automatically adjusted the DATA size to $DATAsize to fit into the device/image.\n";
+
+
+  while($size<$borderecc*512)
+  {
+    $DATAsize>>=1;
+    $borderecc=$borderphi+$eccreal*$eccreal*$majority*$DATAsize*8+1; # lots of ECC (for 512B DA we dont need much, for 4KB we need 11 GB)
+  }
+  print "Automatically changing the data area size to $DATAsize to fit into the device/image file.\n";
+}
+
+
+
+
+if(open XML,">$xmlfn")
+{
+  print XML "<root overwritten='$overwritten'>\n<device>$ARGV[0]</device>\n<pattern type='sectornumber' begin='0' end='".($border0-1)."' size='".($border0)."'/>\n<pattern type='XOR-00' begin='$border0' end='".($border7-1)."' size='".($border7-$border0)."'/>\n<pattern type='XOR-77' begin='$border7' end='".($borderf-1)."' size='".($borderf-$border7)."'/>\n<pattern type='XOR-FF' begin='$borderf' end='".($borderphi-1)."' size='".($borderphi-$borderf)."'/>\n<pattern type='ECC' begin='$borderphi' end='".($borderecc-1)."' size='".($borderecc-$borderphi)."' coverage='$DATAsize' majority='$majority'/>\n<pattern type='sectornumber' begin='$borderecc' end='".(int($size/512)-1)."' size='".(int($size/512)-$borderecc)."'/>\n</root>\n";
+  close XML;
+}
+else
+{
+  print STDERR "Could not open $xmlfn for writing the XML configuration of the pattern: $!\n";
+}
 
 print "Size: $size Bytes ".($size/1000/1000/1000)." GB\n";
 print "Creating a pattern for page size of $DATAsize Bytes.\n";
@@ -73,7 +115,7 @@ my $nblocks=$size/512;
 
 if($overwritten)
 {
-  print "First stage pattern for FTL recovery\n";	
+  print "First stage pattern for FTL recovery\n";
   foreach my $block (0 .. $size/512)
   {
     my $data=sprintf("|Block#%012d (0x%08X) Byte: %020d Pos: %10d MB\n***OVERWRITTEN",$block,$block,$block*512,$block>>11);
@@ -82,14 +124,14 @@ if($overwritten)
     {
       print STDERR "WARNING: sector size is wrong in overwritten\n";
     }
-    print OUT $data;
+    print $OUT $data;
     my $percent=int(100*$block/$nblocks);
     print STDERR "$block $percent\%\n" if(!($block %100000));
   }
   print "Second stage pattern for LDPC and XOR recovery\n";
 }
 
-seek(OUT,0,0);
+seek($OUT,0,0);
 
 foreach my $block (0 .. $size/512)
 {
@@ -124,12 +166,12 @@ foreach my $block (0 .. $size/512)
   {
     print STDERR "WARNING: sector size is wrong in new pattern\n";
   }
-  print OUT $data;
+  print $OUT $data;
   my $percent=int(100*$block/$nblocks);
   print STDERR "$block $percent\%\n" if(!($block %1000000));
 }
 
-close OUT;
+close $OUT;
 print STDERR "Pattern has been written to device/file $mydev\n";
 print STDERR "Pattern configuration has been written to the file $xmlfn in XML format.\n";
 print STDERR "You can now write the pattern image to the disk/pendrive/car with dd, balenaEtcher or PC3K, or use it in the controllersim.\n";
