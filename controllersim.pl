@@ -198,7 +198,13 @@ if(open CASE,"<$casefile")
   while(<CASE>)
   {
     $pagesize=$1 if(m/<Page_size>(\d+)<\/Page_size>/);
-    if(m/<Actual_block_size>(\d+)<\/Actual_block_size>/) # Should we use Nominal or Actual?
+    $pagesize=$1 if(m/^Page +(\d+)\s*$/); # FE support
+    if(m/^<Block +(\d+)\w*$/) # FE support
+    {
+      $blocksize=$1;
+      $pagesperblock=$blocksize/$pagesize;
+    }
+    if(m/<Actual_block_size>(\d+)<\/Actual_block_size>/)
     {
       $blocksize=$1;
       $pagesperblock=$blocksize/$pagesize;
