@@ -77,7 +77,7 @@ else
 
 if($size<$borderecc*512)
 {
-  print "WARNING: The pattern required for a data size of %d is too large to fit into this device/image and would be cut off! Enlarge the image size to at least ".int($borderecc/2/1024)." or change the pattern configuration\n";
+  print "WARNING: The pattern required for a data size of $DATAsize is too large to fit into this device/image and would be cut off! Enlarge the image size to at least ".int($borderecc/2/1024)." MB or change the pattern configuration\n";
   while($size<($borderecc<<9) && $DATAsize>512 && (($DATAsize%1024)==0))
   {
     $DATAsize/=2;
