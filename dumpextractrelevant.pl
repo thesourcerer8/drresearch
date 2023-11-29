@@ -89,6 +89,10 @@ if(open CASE,"<$casefn")
   #$sectors=scalar(@datapos)*$datasize;
   close CASE;
 }
+else
+{
+  print STDERR "WARNING: There is no case file given as parameter, or it could not be opened: $!\nWARNING: We might be missing necessary geometry information. Please make sure that you are running the dumpextractrelevant tool with the casefile parameter.\n";
+}
 
 
 our $xorkey="";
