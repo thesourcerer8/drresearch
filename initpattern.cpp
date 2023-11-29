@@ -25,6 +25,13 @@ const char *GetLastErrorAsString()
   return errorbuffer;  
 }
 
+void showUsage()
+{
+  fprintf(stderr,"Usage: initpattern.exe \\\\.\\PhysicalDrive1 [size in MB] [data area size in Byte]\n");
+  printf("Available disks:\n");
+  system("wmic diskdrive list brief");
+}
+
 int main(int argc, char* argv[])
 {
   DWORD Ropen;
@@ -39,8 +46,7 @@ int main(int argc, char* argv[])
 
   if(argc<2)
   {
-    fprintf(stderr,"Usage: initpattern.exe \\\\.\\PhysicalDrive1 [size in MB] [data area size in Byte]\n");
-    system("wmic diskdrive list brief");
+    showUsage();
     return -1;
   }
   if(argc>2)
@@ -100,6 +106,13 @@ int main(int argc, char* argv[])
     printf("Image Size: %lld (%lldGB)\n",targetsize,targetsize/1000/1000/1000);
   }
 
+  if(!targetsize)
+  {
+    fprintf(stderr,"ERROR: The target size of the disk/card/dumpfile is null.\n");
+    showUsage();
+    return -2;
+  }
+
   if(targetsize<(borderecc<<9))
   {
     printf("WARNING: The pattern required for a data size of %d is too large to fit into this device/image! Enlarge the image size to at least %lld MB or change the pattern configuration\n",DATAsize,borderecc/2/1024);
@@ -114,8 +127,8 @@ int main(int argc, char* argv[])
   }
   if((DATAsize%512)>0)
   {
-    printf("ERROR: The datasize is not a multiple of 512 Bytes, please check the parameters!\n");
-    exit(-1);
+    fprintf(stderr,"ERROR: The datasize is not a multiple of 512 Bytes, please check the parameters!\n");
+    exit(-3);
   }
 
   printf("Creating old pattern for recovering the FTL\n");
