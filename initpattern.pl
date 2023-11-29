@@ -1,5 +1,7 @@
 #!/usr/bin/perl -w
 
+print "WARNING: This tool writes a pattern to a disk/card and thereby OVERWRITES the whole disk/card. Only use it on donors. Do not use it if you are not sure what you are doing!\n";
+
 if(!scalar(@ARGV))
 {
   print "$0 generates a pattern and writes it directly to a device or to a dumpfile with a given size.\n";
@@ -43,7 +45,6 @@ sub idema_gb2lba($) # ($GB)
   my $LBAcounts = (97696368) + (1953504 * ($AdvertisedCapacity - 50));
   return($LBAcounts);
 }
-
 
 if($ARGV[1])
 {
