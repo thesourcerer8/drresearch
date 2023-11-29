@@ -275,6 +275,11 @@ print "Missing: ".join(",",@missings)."\n" if($missing && $missing<20);
 if($percent<99)
 {
   print "\nThis dump is incomplete or has not been properly XOR decoded yet.\n";
+  if(!defined($casefn))
+  {
+    print STDERR "Error: Without the geometry information from a casefile we cannot recover the XOR key!\n";
+    exit;
+  }
   print "Trying to automatically XOR decode it now:\n\n";
   my $xorsearch=__FILE__; $xorsearch=~s/\w+\.pl$/xorsearch.pl/;
   my $cmd="perl \"$xorsearch\" \"$imagefn\" \"$imagefn.xor\" \"$casefn\"";
