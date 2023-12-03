@@ -155,6 +155,7 @@ sub fixdecimal($) # Fixes up to 3 bit errors
 #print fixdecimal("012345v789")."\n";
 
 
+print "Dump file size: ".(-s $imagefn)." (".((-s $imagefn)/$pagesize)." pages)\n";
 
 while(!$ende)
 {
