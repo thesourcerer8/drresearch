@@ -106,6 +106,7 @@ else
 our $xorkey="";
 if(open XOR,"<$ARGV[0].xor")
 {
+  print "Loading XOR key from $ARGV[0].xor\n";
   binmode XOR;
   undef $/;
   $xorkey=<XOR>;
