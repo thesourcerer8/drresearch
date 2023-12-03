@@ -1,13 +1,7 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
-use Win32::Console::ANSI; # You may need to install this module if not installed
-
-# Add the following lines to install the required module
-# To install, open Command Prompt and run: cpan Win32::Console::ANSI
-
-# ppm install http://www.sisyphusion.tk/ppm/Win32-Console-ANSI.ppd
-# cpan Win32::Console::ANSI
+use Win32::Console::ANSI;
 
 use Getopt::Long;
 
@@ -27,7 +21,7 @@ if ($help) {
 }
 
 my @fns = @ARGV;
-@fns = glob("*.dmp") if (!scalar(@ARGV));
+@fns = glob("*.dump") if (!scalar(@ARGV));
 
 foreach my $fn (@fns) {
 
@@ -51,8 +45,11 @@ foreach my $fn (@fns) {
 
     $pagesize *= 8 if ($bw);
 
-    my $cmd  = "start /B display -depth " . ( $bw ? 1 : 8 ) . " -size $pagesize" . "x$bs -crop $pagesize" . "x$maxy+0+0 \"gray:$fn\"";
-    my $cmd2 = "start /B convert -depth " . ( $bw ? 1 : 8 ) . " -size $pagesize" . "x$bs -crop $pagesize" . "x$maxy+0+0 \"gray:$fn\" output.png";
+    my $magick_cmd  = 'C:\Program Files\ImageMagick-7.1.1-Q16-HDRI\magick.exe';
+    my $convert_cmd = 'C:\Program Files\ImageMagick-7.1.1-Q16-HDRI\convert.exe';
+
+    my $cmd  = "start /B $magick_cmd -depth " . ( $bw ? 1 : 8 ) . " -size $pagesize" . "x$bs -crop $pagesize" . "x$maxy+0+0 \"gray:$fn\"";
+    my $cmd2 = "start /B $convert_cmd -depth " . ( $bw ? 1 : 8 ) . " -size $pagesize" . "x$bs -crop $pagesize" . "x$maxy+0+0 \"gray:$fn\" output.png";
 
     system($cmd);
     print "$cmd2\n";
