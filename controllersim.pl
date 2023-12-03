@@ -197,11 +197,13 @@ if(open CASE,"<$casefile")
   my @mysaeccpos=();
   while(<CASE>)
   {
+    s/\x00//g; # FE is UTF-16
     $pagesize=$1 if(m/<Page_size>(\d+)<\/Page_size>/);
     $pagesize=$1 if(m/^Page +(\d+)\s*$/); # FE support
-    if(m/^<Block +(\d+)\w*$/) # FE support
+    if(m/^Block +0x([0-9a-fA-F]+)\s*$/) # FE support
     {
-      $blocksize=$1;
+      print "FE Chip.txt format detected\n";
+      $blocksize=hex($1);
       $pagesperblock=$blocksize/$pagesize;
     }
     if(m/<Actual_block_size>(\d+)<\/Actual_block_size>/)
