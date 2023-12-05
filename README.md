@@ -49,7 +49,7 @@ initpattern.exe 01_01.dump
 Choose the correct device carefully to avoid overwriting the wrong device!
 Then run initpattern.exe with the DeviceID of the pendrive/SD-Card/MicroSD-card/...
 ```
-initpattern.exe \\.\PHYSICALDRIVE4
+initpattern.exe \\.\PHYSICALDRIVE42
 ```
 This writes the pattern directly on the disk.
 Alternatively you can write the pattern to an image file and use your favourite imaging tool like dd, balenaEtcher, ... to write the image to a disk/pendrive/SD/MicroSD card.
