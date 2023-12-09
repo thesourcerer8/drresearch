@@ -3,6 +3,8 @@ use strict;
 use File::Basename;
 use List::MoreUtils qw(uniq);
 
+my $debug=1;
+
 if(scalar(@ARGV)<3)
 {
   print "Usage: $0 <input.dump> <output.dump> <pattern.xml> <casefile.case>\n";
@@ -10,6 +12,12 @@ if(scalar(@ARGV)<3)
   print "Afterwards you can then upload the output.dump and send it to our reconstruction service\n";
   exit;
 }
+
+
+# TODO:
+# TODO: Not all of the patterns are being found. This might be due to the patterns used being too strict
+# TODO: We need a visualisation of which blocks were found and which blocks are missing
+# TODO: We also need a visualisation in which blocks a pattern was found and in which blocks no patterns were found
 
 
 my $imagefn=$ARGV[0];
@@ -73,7 +81,7 @@ if(open CASE,"<$casefn")
       $blocksize=$1;
       $pagesperblock=$blocksize/$pagesize;
     }
-    if(m/<Record StructureDefinitionName="(DA|Data area)" StartAddress="(\d+)" StopAddress="(\d+)" \/>/i)
+    if(m/<Record StructureDefinitionName="(DA|Data area|DATA)" StartAddress="(\d+)" StopAddress="(\d+)" \/>/i)
     {
       print "Adding $2 to datapos\n";
       push @mydatapos,$2;
@@ -129,7 +137,7 @@ my $char1 = '|Block#';
 my $char2 = "xxxxx\x0a\x00";
 
 
-my %posfound=();
+my %posfound=(); # This is an array of the offsets of the sector start positions inside a page
 my %lbafound=();
 
 sub fixdecimal($) # Fixes up to 3 bit errors
@@ -157,6 +165,17 @@ sub fixdecimal($) # Fixes up to 3 bit errors
 
 print "Dump file size: ".(-s $imagefn)." (".((-s $imagefn)/$pagesize)." pages)\n";
 
+if($debug)
+{
+  open BMAP,">$imagefn.blocks.map";
+  open PMAP,">$imagefn.pages.map";
+  print BMAP "# Mapfile. Created by dumprelevantextract\n# THIS DEBUG LOGFILE SHOWS THE LBA BLOCKS THAT WERE FOUND\n# Commandline. @ARGV\n# Start time: ".localtime(time())."\n0x0 + 1\n# pos      size   status\n";
+  print PMAP "# Mapfile. Created by dumprelevantextract\n# THIS DEBUG LOGFILE SHOWS THE PAGES OF THE DUMP IN WHICH BLOCKS WERE FOND\n# Commandline. @ARGV\n# Start time: ".localtime(time())."\n0x0 + 1\n# pos      size   status\n";
+}
+
+my $prevpos=0;
+my $prevval=42;
+
 while(!$ende)
 {
   my $in="";
@@ -179,7 +198,7 @@ while(!$ende)
   my $offset=0;
   my $isgood=0;
 
-  my $result = index($sector, $char1, $offset); # Search for the first sector inside this page
+  my $result = index($sector, $char1, $offset); # Search for the first sector inside this page by the pattern at the beginning of the sector, remember the startposition of the sector
   while ($result != -1)
   {
     $posfound{$result}=1;
@@ -188,7 +207,7 @@ while(!$ende)
   }
 
   $offset=0;
-  $result = index($sector, $char2, $offset); # Search for the first sector inside this page
+  $result = index($sector, $char2, $offset); # Search for the first sector inside this page by the pattern at the end of the sector, remember the startposition of the sector
   while ($result != -1)
   {
     $posfound{$result-512+7}=1;
@@ -206,7 +225,7 @@ while(!$ende)
     if(!defined($lbab))
     {
       print STDERR "WARNING: Most likely the pagesize is wrong. Please give the pagesize by naming the dump files like mydump(18324p).dmp\n";
-	exit;
+      exit;
     }
     my $lba=undef;
     #print "Found $char at $result (fulladdress:$fulladdress xorpage:$xorpage blockpage:$blockpage)";
@@ -255,6 +274,12 @@ while(!$ende)
     $outpages++;
     #print "Writing 1874827776\n" if($in=~m/1874827776/);
   }
+  if($prevval ne $isgood)
+  {
+    print PMAP sprintf("0x%X 0x%X %s\n",$prevpos<<9,($prevpos-$pagen)<<9,$isgood?"+":"-") if($pagen);
+    $prevval=$isgood;
+    $prevpos=$pagen;
+  }
 
   $pagen++;
   print STDERR "$pagen pages processed\n" if(!($pagen %100000));
@@ -273,12 +298,23 @@ my $found=0;
 my $inc=($ecccoverage/512)+1;
 print "Inc: $inc\n";
 my @missings=();
+$prevpos=$eccstart;
+$prevval=defined($lbafound{$eccstart});
 for(my $lba=$eccstart; $lba<=$eccend; $lba+=$inc)
 {
   $missing++ if(!defined($lbafound{$lba}));
   $found++ if(defined($lbafound{$lba}));
+  if($prevval ne defined($lbafound{$lba}))
+  {
+    print BMAP sprintf("0x%X 0x%X %s\n",($prevpos-$eccstart)<<9,($lba-$prevpos+1)<<9,defined($lbafound{$lba})?"+":"-");
+    $prevval=defined($lbafound{$lba});
+    $prevpos=$lba+1;
+  }
   push @missings,$lba if(!defined($lbafound{$lba}));
 }
+print BMAP sprintf("0x%X 0x%X %s\n",($eccend-$eccstart+1)<<9,($eccend-$prevpos+1)<<9,defined($prevval)?"+":"-");
+close BMAP;
+close PMAP;
 my $percent=($found+$missing)?int(100*$found/($found+$missing)) : 0;
 print "Found: $found Missing: $missing => $percent % found (Range searched: $eccstart..$eccend inc $inc)\n";
 print "Missing: ".join(",",@missings)."\n" if($missing && $missing<20);
