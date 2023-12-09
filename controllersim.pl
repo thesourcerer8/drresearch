@@ -211,7 +211,7 @@ if(open CASE,"<$casefile")
       $blocksize=$1;
       $pagesperblock=$blocksize/$pagesize;
     }
-    if(m/<Record StructureDefinitionName="(DA|Data area)" StartAddress="(\d+)" StopAddress="(\d+)" \/>/i)
+    if(m/<Record StructureDefinitionName="(DA|Data area|DATA)" StartAddress="(\d+)" StopAddress="(\d+)" \/>/i)
     {
       print "Adding $2 to datapos\n" if($thisshare<1);
       push @mydatapos,$2;
