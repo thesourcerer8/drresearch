@@ -8,8 +8,7 @@ my $debug=1;
 if(scalar(@ARGV)<3)
 {
   print "Usage: $0 <input.dump> <output.html> <casefile.case> <pages>\n";
-  print "This tool searches the necessary parts from a dump to extract the parameters and writes it to the output.dump\n";
-  print "Afterwards you can then upload the output.dump and send it to our reconstruction service\n";
+  print "This tool generates a large-scale hex-dump of a dumpfile, where each page is one long line of hex, with SA, DA and ECC colored.\n";
   exit;
 }
 
@@ -110,11 +109,6 @@ if(open CASE,"<$casefn")
   #$sectors=scalar(@datapos)*$datasize;
   close CASE;
 }
-else
-{
-  print STDERR "WARNING: There is no case file given as parameter, or it could not be opened: $!\nWARNING: We might be missing necessary geometry information. Please make sure that you are running the dumpextractrelevant tool with the casefile parameter.\n";
-}
-
 
 
 open(IN,"<:raw",$imagefn) || die "Could not open dump file $imagefn for reading: $!\n";
@@ -228,3 +222,4 @@ close OUT;
 
 #print "Page Offsets for DATA: ".join(",",sort keys(%posfound))."\n";
 print STDERR "Done.\n";
+print "firefox $htmlfn\n";
