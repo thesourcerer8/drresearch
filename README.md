@@ -11,6 +11,8 @@ A video explaining the first steps:
 ## Requirements:
 A working donor with access to both the controller and to the NAND flash wired up
 Either PC3000-Flash, VNR or Flash-Extractor
+Linux:
+```sudo apt-get install python3-pyqt5```
 
 ## Task:
 You have to use the initpattern tool to write a pattern on a donor.
