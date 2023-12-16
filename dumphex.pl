@@ -7,8 +7,9 @@ my $debug=1;
 
 if(scalar(@ARGV)<3)
 {
-  print "Usage: $0 <input.dump> <output.html> <casefile.case> <pages>\n";
+  print "Usage: $0 <input.dump> <output.html> <casefile.case> <pages> <pagesperblock>\n";
   print "This tool generates a large-scale hex-dump of a dumpfile, where each page is one long line of hex, with SA, DA and ECC colored.\n";
+  print "If pagesperblock is given, it will only dump the first page of each block\n";
   exit;
 }
 
@@ -17,6 +18,7 @@ my $imagefn=$ARGV[0];
 my $htmlfn=$ARGV[1];
 my $casefn=$ARGV[2];
 my $pages=$ARGV[3];
+my $pagesperblock=$ARGV[4] || 1;
 
 print "Dumping pages from a dump file \"$imagefn\" into an output HTML file \"$htmlfn\"\n";
 
@@ -205,6 +207,7 @@ $pagen=$minpage;
 while(!$ende)
 {
   my $in="";
+  seek IN,$pagen*$pagesize*$pagesperblock,0;
   my $read=read IN,$in,$pagesize;
   last if(!defined($read) || !$read);
   if($pagen>=$minpage && $pagen<=$maxpage)
