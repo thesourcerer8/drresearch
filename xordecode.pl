@@ -22,9 +22,9 @@ if(open(IN,"<$ARGV[1]"))
   read IN,$xorkey,$xorsize;
   close IN;
 }
-print "XOR key loaded.\n";
+print "XOR key loaded with size: ".length($xorkey)."\n";
 
-print "Warning: The dump file is not a multiple of the XOR key size!\n" if(($dumpsize % $xorsize)>0);
+print "Warning: The dump file size ($dumpsize) is not a multiple of the XOR key size ($xorsize)!\n" if(($dumpsize % $xorsize)>0);
 
 open IN,"<$ARGV[0]";
 binmode IN;
@@ -34,7 +34,7 @@ binmode OUT;
 foreach(0 .. $dumpsize/$xorsize)
 {
   my $data="";
-  my $read=read IN,$data,6;
+  my $read=read IN,$data,$xorsize;
   $data^=$xorkey;
   print OUT $data;
   print "$_ blocks processed. ".int($_*$xorsize/1000000000)." GB\n" if(($_ %100)==1);
@@ -42,6 +42,6 @@ foreach(0 .. $dumpsize/$xorsize)
 close IN;
 close OUT;
 
-print "Warning: The dump file is not a multiple of the XOR key size!\n" if(($dumpsize % $xorsize)>0);
+print "Warning: The dump file size ($dumpsize) is not a multiple of the XOR key size ($xorsize)!\n" if(($dumpsize % $xorsize)>0);
 print STDERR "The decoded dump has been written to $ARGV[2]\n";
 print STDERR "Done.\n";
