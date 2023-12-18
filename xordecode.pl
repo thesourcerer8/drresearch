@@ -36,19 +36,11 @@ foreach(0 .. int($dumpsize/$xorsize))
   my $data="";
   my $read=read IN,$data,$xorsize;
   print "WARNING: Lenghts do not match! ".length($data)." vs. ".length($xorkey)."\n" if(length($data) != length($xorkey));
-  $data^=$xorkey;
+  $data^=substr($xorkey,0,length($data));
   print OUT $data;
   print "$_ blocks processed. ".int($_*$xorsize/1000000000)." GB\n" if(($_ %100)==1);
 }
 
-if($dumpsize % $xorsize)
-{
-  print "Remaining Bytes: ".($dumpsize % $xorsize)."\n";
-  my $datarest="";
-  read IN,$datarest,$dumpsize % $xorsize;
-  $datarest^=substr($xorkey,0,$dumpsize % $xorsize);
-  print OUT $datarest;
-}
 
 close IN;
 close OUT;
