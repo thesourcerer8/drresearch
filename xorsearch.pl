@@ -164,9 +164,6 @@ print "Datapos: ".join(",",@datapos)."\n";
 
 open(IN,"<:raw",$dumpfn) || die "Could not open image file $dumpfn for reading: $!\n";
 binmode IN;
-open(OUT,">:raw",$xorfn) || die "Could not open dump file $xorfn for writing: $!\n";
-binmode OUT;
-
 my $ende=0;
 my $pagen=0;
 
@@ -249,6 +246,8 @@ print "Calculating XOR pattern from ".scalar(@majpatterns)." patterns\n";
 
 my $xorpattern=maj(@majpatterns);
 
+open(OUT,">:raw",$xorfn) || die "Could not open XOR key file $xorfn for writing: $!\n";
+binmode OUT;
 print OUT $xorpattern;
 
 print STDERR "Writing out final XOR pattern to $xorfn\n";
