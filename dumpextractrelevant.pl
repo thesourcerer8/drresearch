@@ -321,6 +321,11 @@ print "Missing: ".join(",",@missings)."\n" if($missing && $missing<20);
 if($percent<99)
 {
   print "\nThis dump is incomplete or has not been properly XOR decoded yet.\n";
+  if(-f "$imagefn.xor")
+  {
+    print "Perhaps the XOR key is wrong? We give up now.\n";
+    exit;
+  }
   if(!defined($casefn))
   {
     print STDERR "Error: Without the geometry information from a casefile we cannot recover the XOR key!\n";
