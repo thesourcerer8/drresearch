@@ -19,6 +19,12 @@ if(scalar(@ARGV)<3)
   exit;
 }
 
+if(-f $ARGV[1])
+{
+  print STDERR "ERROR: The XOR pattern file already exists, to avoid overwriting the wrong file we stop here. If you want to overwrite it, please delete it first.\n";
+  exit;
+}
+
 my $pagesize=4000; # Bytes
 my $ecccoverage=1024; # Bytes
 my @datapos=(0,1500);
@@ -157,9 +163,11 @@ if(open CASE,"<$casefn")
   close CASE;
 }
 
-
+my $dumpsize=-s $dumpfn;
+print "Dump size: $dumpsize\n";
 print "Pagesize: $pagesize\n";
 print "Pages per Block: $pagesperblock\n";
+print "Blocks per Dump: ".int($dumpsize/$pagesize/$pagesperblock)."\n";
 print "Datapos: ".join(",",@datapos)."\n";
 
 open(IN,"<:raw",$dumpfn) || die "Could not open image file $dumpfn for reading: $!\n";
@@ -192,18 +200,23 @@ for(my $offset=0;$offset<$pagesize;$offset+=2)
   print "Dump fully loaded.\n";
 
   my @sortedpat=sort {$foundpattern{$b} <=> $foundpattern{$a}} keys %foundpattern;
-
-  print "Found patterns sorted by occurance:\n";
-  foreach(@sortedpat)
+  my $npat=scalar(@sortedpat);
+  print "Found $npat patterns sorted by occurance:\n";
+  if($npat<10)
   {
-    #print bin2hex($_)." ".$foundpattern{$_}."\n";
+    foreach(@sortedpat)
+    {
+      print bin2hex($_)." ".$foundpattern{$_}."\n";
+    }
   }
   print "Analyzing for best 00 pattern:\n";
-  foreach my $i (0 .. 30)
+  my $max=$npat>30 ? 30 : $npat;
+  $max-- if($max>1 && !($max&1));
+  foreach my $i (0 .. $max-1)
   {
     my $thispattern=$sortedpat[$i];
     my $matches=0;
-    foreach my $j (0 .. 30)
+    foreach my $j (0 .. $max-1)
     {
       $matches++ if(defined($startpattern{$thispattern ^ $sortedpat[$j]}));
     }
@@ -223,6 +236,7 @@ for(my $offset=0;$offset<$pagesize;$offset+=2)
     last;
   }
 }
+print "Best pattern: ".bin2hex($bestpattern)." Best match: $bestmatch Best offset: $bestoffset\n";
 
 print "Loading maximum $maximumblocks full blocks from dump...\n";
 print "If it takes too much RAM and crashes, then please reduce the \$maximumblocks parameter in the script.\n";
@@ -249,6 +263,7 @@ my $xorpattern=maj(@majpatterns);
 open(OUT,">:raw",$xorfn) || die "Could not open XOR key file $xorfn for writing: $!\n";
 binmode OUT;
 print OUT $xorpattern;
+close OUT;
 
 print STDERR "Writing out final XOR pattern to $xorfn\n";
 print STDERR "Done.\n";
