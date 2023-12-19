@@ -25,6 +25,12 @@ my $dumpfn=$ARGV[1];
 my $patternxmlfn=$ARGV[2];
 my $casefn=$ARGV[3];
 
+if(-f $dumpfn)
+{
+  print "Error: The output file $dumpfn already exists, and we want to avoid overwriting the wrong files. Please delete it and try again.\n";
+  exit;
+}
+
 print "Extracting all relevant pages from a dump file \"$imagefn\" into an output dump \"$dumpfn\"\n";
 
 my $pagesize=4000; # Bytes
@@ -340,6 +346,7 @@ if($percent<99)
   {
     print "\nXOR key was found, now trying again.\n\n";
     my $cmd="perl \"$0\" \"".join("\" \"",@ARGV)."\" ";
+    print "Running $cmd\n";
     system $cmd;
   }
   else
