@@ -345,6 +345,7 @@ if($percent<99)
   if(-f "$imagefn.xor")
   {
     print "\nXOR key was found, now trying again.\n\n";
+    unlink $dumpfn;
     my $cmd="perl \"$0\" \"".join("\" \"",@ARGV)."\" ";
     print "Running $cmd\n";
     system $cmd;
