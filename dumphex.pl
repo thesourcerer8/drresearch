@@ -26,7 +26,7 @@ my $pagesize=4000; # Bytes
 my $eccstart=3145728;
 my $eccend=3614367;
 $pagesize=$1 if($ARGV[1]=~m/\((\d+)p\)/);
-our $pagesperblock=128;
+$pagesperblock=128;
 my $ecccoverage=1024;
 my $blocksize=$pagesize*$pagesperblock; # !!! NEEDS TO BE ADAPTED LATER ON IN CASE THE VALUES CHANGED
 
@@ -117,7 +117,7 @@ open(IN,"<:raw",$imagefn) || die "Could not open dump file $imagefn for reading:
 binmode IN;
 open(OUT,">",$htmlfn) || die "Could not open output file $htmlfn for writing: $!\n";
 
-print OUT "<html><body><pre>\n";
+print OUT "<html><style>div {display:inline;}</style><body><pre>\n";
 my $ende=0;
 my $pagen=0;
 my $outpages=0;
@@ -148,9 +148,9 @@ sub dumpAnnotatedHex($)
     $content.="<br/>".("&#160;" x $linebreaks{$_})  if($linebreaks{$_});
     my $this=$bytelabels{$_}||"";
     my $next=$bytelabels{$_+1}||"";
-    $content.="<div title='$this $_' style='display: inline; background-color:".(defined($bytecolor{$_})?$bytecolor{$_}:$this?"yellow":"white").";'>" if($prev ne $this);
+    $content.="<div title='$this $_' style='background-color:".(defined($bytecolor{$_})?$bytecolor{$_}:$this?"yellow":"white").";'>" if(1); #$prev ne $this);
     $content.=sprintf("%02X",unpack("C",substr($value,$_,1)));
-    $content.= $this eq $next ? "&#160;":"</div>&#160;";
+    $content.= "</div>&#160;"; # $this eq $next ? "&#160;":
     $prev=$this;
   }
   #print "Done.\n";
@@ -184,34 +184,44 @@ sub bin2hexLF($)
 }
 
 
-
+print "Pages per Block: $pagesperblock\n";
 print "Dump file size: $s (".($s/$pagesize)." pages)\n";
 
 my $minpage=0;
 my $maxpage=int($s/$pagesize);
 
-if($pages=~m/^\d+$/)
+if(($pages||"")=~m/^\d+$/)
 {
   $minpage=0;
   $maxpage=$pages;
 }
-elsif($pages=~m/^(\d+)\-(\d+)$/)
+elsif(($pages||"")=~m/^(\d+)\-(\d+)$/)
 {
   $minpage=$1;
   $maxpage=$2;
 }
 
 seek IN,$pagesize*$minpage,0;
-$pagen=$minpage;
+$pagen=$minpage-1;
+
+print "Minpage: $minpage\nMaxpage: $maxpage\nPagesize: $pagesize\n";
+
+foreach(0 .. $pagesize-1)
+{
+	#  print OUT "<div title='$_' style='display:inline'>vv</div>&#160;";
+}
+print OUT "\n";
 
 while(!$ende)
 {
   my $in="";
-  seek IN,$pagen*$pagesize*$pagesperblock,0;
+  my $s=seek IN,$pagen*$pagesize, 0; # *$pagesperblock,0;
   my $read=read IN,$in,$pagesize;
+  #print "page: $pagen s: $s read: $read\n";
   last if(!defined($read) || !$read);
-  if($pagen>=$minpage && $pagen<=$maxpage)
+  if($in=~m/Block/ && $pagen>=$minpage && $pagen<=$maxpage)
   {
+    print "Found block\n";
     print OUT dumpAnnotatedHex($in);
   }
 
