@@ -31,11 +31,12 @@ binmode IN;
 open OUT,">$ARGV[2]";
 binmode OUT;
 
-foreach(0 .. int($dumpsize/$xorsize))
+foreach(0 .. int(($dumpsize-1)/$xorsize))
 {
   my $data="";
   my $read=read IN,$data,$xorsize;
-  print "WARNING: Lenghts do not match! ".length($data)." vs. ".length($xorkey)."\n" if(length($data) != length($xorkey));
+  last if(!$read);
+  print "WARNING: Lengths do not match! ".length($data)." vs. ".length($xorkey)."\n" if(length($data)>0 && length($data) != length($xorkey));
   $data^=substr($xorkey,0,length($data));
   print OUT $data;
   print "$_ blocks processed. ".int($_*$xorsize/1000000000)." GB\n" if(($_ %100)==1);
