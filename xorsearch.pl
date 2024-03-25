@@ -25,6 +25,11 @@ if(-f $ARGV[1])
   exit;
 }
 
+sub popcount($)
+{
+  return unpack("%32b*",$_[0]);
+}
+
 my $pagesize=4000; # Bytes
 my $ecccoverage=1024; # Bytes
 my @datapos=(0,1500);
@@ -58,6 +63,19 @@ sub bin2hex($)
   foreach(0 .. length($orig)-1)
   {
     $value.=sprintf("%02X",unpack("C",substr($orig,$_,1)));
+  }
+  return $value;
+}
+
+sub bin2ascii($)
+{
+  my $orig=$_[0];
+  my $value="";
+  return "" if(!defined($orig) || $orig eq "");
+  foreach(0 .. length($orig)-1)
+  {
+    my $v=unpack("C",substr($orig,$_,1));
+    $value.= ($v>=32 && $v < 128)?pack("C",$v):"_";
   }
   return $value;
 }
@@ -108,7 +126,6 @@ sub maj(@)
   }
   return $final;
 }
-
 
 
 GetOptions ("debug=i" => \$debug,
@@ -168,6 +185,7 @@ print "Dump size: $dumpsize\n";
 print "Pagesize: $pagesize\n";
 print "Pages per Block: $pagesperblock\n";
 print "Blocks per Dump: ".int($dumpsize/$pagesize/$pagesperblock)."\n";
+print "Blocksize: ".($pagesize*$pagesperblock)."\n";
 print "Datapos: ".join(",",@datapos)."\n";
 
 open(IN,"<:raw",$dumpfn) || die "Could not open image file $dumpfn for reading: $!\n";
@@ -179,9 +197,11 @@ my $pagen=0;
 my %startpattern=("|Block"=>1,"P00000"=>1,"\x00\x00\x00\x00\x00\x00"=>1,"\x77\x77\x77\x77\x77\x77"=>1,"\xff\xff\xff\xff\xff\xff"=>1);
 
 our %foundpattern=();
-
+our %foundpos=();
 
 my $size=-s $dumpfn;
+
+my $nblocks=int($size/$blocksize);
 
 my $bestpattern=-1;
 my $bestmatch=0;
@@ -189,6 +209,7 @@ my $bestoffset=0;
 
 for(my $offset=0;$offset<$pagesize;$offset+=2)
 {
+  %foundpattern=();
   print "Loading block starts from dump at offset $offset...\n";
   for(my $pos=$offset;$pos<=($size-512);$pos+=$blocksize)
   {
@@ -196,17 +217,18 @@ for(my $offset=0;$offset<$pagesize;$offset+=2)
     my $in="";
     my $read=read IN,$in,6;
     $foundpattern{$in}++;
+    $foundpos{$in}=$pos if(!defined($foundpos{$in}));
   }
   print "Dump fully loaded.\n";
 
   my @sortedpat=sort {$foundpattern{$b} <=> $foundpattern{$a}} keys %foundpattern;
   my $npat=scalar(@sortedpat);
   print "Found $npat patterns sorted by occurance:\n";
-  if($npat<10)
+  if($npat<150)
   {
     foreach(@sortedpat)
     {
-      print bin2hex($_)." ".$foundpattern{$_}."\n";
+      print "Pattern ".bin2hex($_)." ".$foundpattern{$_}." ".int($foundpattern{$_}*$blocksize/1000/1000/1000)."GB\n";
     }
   }
   print "Analyzing for best 00 pattern:\n";
@@ -219,6 +241,10 @@ for(my $offset=0;$offset<$pagesize;$offset+=2)
     foreach my $j (0 .. $max-1)
     {
       $matches++ if(defined($startpattern{$thispattern ^ $sortedpat[$j]}));
+    }
+    if($matches>1)
+    {
+      print "Found match: $i with $matches matches: ".bin2hex($sortedpat[$i])."\n";
     }
     if($matches>$bestmatch)
     {
@@ -237,6 +263,61 @@ for(my $offset=0;$offset<$pagesize;$offset+=2)
   }
 }
 print "Best pattern: ".bin2hex($bestpattern)." Best match: $bestmatch Best offset: $bestoffset\n";
+
+my $goodblocks=0;
+my $nearblocks=0;
+my $remainingblocks=0;
+my $flashblocks=0; # ($foundpattern{"\x00\x00\x00\x00\x00\x00"}||0)+($foundpattern{"\xff\xff\xff\xff\xff\xff"}||0);
+my %goodblockheaders=();
+foreach my $pat(sort keys %startpattern)
+{
+  #$goodblocks+=$foundpattern{$pat^$bestpattern};
+  $goodblockheaders{$pat^$bestpattern}=1;
+  print "Orig: ".bin2hex($pat)." -> XORed: ".bin2hex($pat ^ $bestpattern)." Found: ".$foundpattern{$pat^$bestpattern}."\n";
+}
+my %stat=();
+foreach my $pat(sort keys %foundpattern)
+{
+  my $res="";
+  if(defined($goodblockheaders{$pat}))
+  {
+    $goodblocks+=$foundpattern{$pat};
+    $res="GOOD";
+  }
+  elsif($pat eq"\x00\x00\x00\x00\x00\x00" || $pat eq "\xff\xff\xff\xff\xff\xff" || popcount($pat)<3 || popcount($pat ^"\xff\xff\xff\xff\xff\xff") < 3)
+  {
+    $flashblocks+=$foundpattern{$pat};
+    $res="FLASH";
+  }
+  else
+  {
+    my $best=1000;
+    foreach my $comp(keys %goodblockheaders)
+    {
+      my $num=popcount($pat ^ $comp);
+      #print "Comparing ".bin2hex($pat)." with ".bin2hex($comp)." -> ".bin2hex($pat ^ $comp)." -> $num\n";
+      $best=$num if($best>$num);
+    }
+    if($best<=2)
+    {
+      $nearblocks+=$foundpattern{$pat};
+      $res="NEAR";
+    }
+    else
+    {
+      $remainingblocks+=$foundpattern{$pat};
+      $res="UNKNOWN"; # -$best";
+    }
+  }
+  $stat{$res}+=$foundpattern{$pat};
+  print "Pattern ".bin2hex($pat)." ".bin2hex($pat^$bestpattern)."(".bin2ascii($pat^$bestpattern).") is $res and found ".$foundpattern{$pat}." times. Example: $foundpos{$pat}\n";
+}
+foreach(sort keys %stat)
+{
+  print "Stat: $_ $stat{$_} ".int($stat{$_}*$blocksize/1000/1000/1000)."GB\n";
+}
+print "Good pattern Blocks: $goodblocks\n00/FF Blocks: $flashblocks\nNear blocks: $nearblocks\nRemaining blocks: ".($nblocks-$goodblocks-$flashblocks-$nearblocks)."\n";
+
 
 print "Loading maximum $maximumblocks full blocks from dump...\n";
 print "If it takes too much RAM and crashes, then please reduce the \$maximumblocks parameter in the script.\n";
