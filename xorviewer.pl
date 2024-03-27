@@ -8,7 +8,7 @@ CGI::ReadParse(\%in);
 print "Content-type: text/html; charset=utf-8\n\n";
 
 my $dump=$in{'dump'};
-my $pagesize=$in{'pagesize'};
+my $pagesize=int($in{'pagesize'} || 1);
 my $npages=int($in{'npages'} || 50);
 my $pagefrag=64;
 my $start=int($in{'start'} || 0);
@@ -81,7 +81,7 @@ if($dump !~ m/\.(dump|dmp|raw|bin|img|decoded|g|m|xor)$/)
 
 my $xor=readfile("$dump.xor");
 
-my $pagesperblock=$pagesize ? length($xor)/int($pagesize) : 1;
+my $pagesperblock=($pagesize && length($xor)) ? length($xor)/int($pagesize) : 1;
 
 my $dumpsize=-s $dump;
 
@@ -89,6 +89,7 @@ if(open($IN,"<$dump"))
 {
   binmode $IN;
   my $base1="?dump=".sanitizeHTML($dump)."&pagesize=".sanitizeHTML($pagesize)."&xormode=\"+mydivtoggle+\"&xoroffset=".int($xoroffset)."&pagestart=".int($pagestart)."&start=";
+  my $base1a="?dump=".sanitizeHTML($dump)."&pagesize=".sanitizeHTML($pagesize)."&xormode=$xormode&xoroffset=".int($xoroffset)."&pagestart=".int($pagestart)."&start=";
   my $left=$base1.($start-($pagefrag>>1));
   my $right=$base1.($start+($pagefrag>>1));
   my $base2="?dump=".sanitizeHTML($dump)."&pagesize=".sanitizeHTML($pagesize)."&xormode=\"+mydivtoggle+\"&xoroffset=".int($xoroffset)."&start=".int($start)."&pagestart=";
@@ -170,9 +171,10 @@ if(open($IN,"<$dump"))
 EOF
 ;
 
+print "<div style='position:fixed'>Stats: pagesize:".int($pagesize)." pagesperblock:$pagesperblock".(length($xor)?" xorsize:".length($xor):"")." start:".int($start)." pagestart:".int($pagestart)." block:".int($pagestart/$pagesperblock)."/page:".($pagestart % $pagesperblock)." Total-Blocks:".int($dumpsize/$pagesize/$pagesperblock).(length($xor)?" XOR-Offset:".int($xoroffset):"")."</div><br/>\n";
+
 if(length($xor))
 {
-print "Stats: pagesize:".int($pagesize)." pagesperblock:$pagesperblock xorsize:".length($xor)." start:".int($start)." pagestart:".int($pagestart)." block:".int($pagestart/$pagesperblock)."/page:".($pagestart % $pagesperblock)." Total-Blocks:".int($dumpsize/$pagesize/$pagesperblock)." XOR-Offset:".int($xoroffset)."<br/>\n";
 print <<EOF
 	<input type="button" onclick="javascript:mytoggle();" value='XOR ON/OFF'/>
 EOF
@@ -210,6 +212,26 @@ if(defined($xor))
     print sanitizeHTML(bin2hexascii(substr(($content ^ substr($xor,$xorpage*$pagesize,$pagesize)),$start,$pagefrag)))."\n";
   }
   print "</pre></div>\n";
+}
+
+
+
+my $casefn=$dump; $casefn=~s/[^\/\\]*$/download.case/;
+if(open CASE,"<$casefn")
+{
+  print "<table align='right'><tr><th>Page structure</th></tr>";
+  my $count=0;
+  while(<CASE>)
+  {
+    if(m/<Record StructureDefinitionName="([^"]+)" StartAddress="(\d+)" StopAddress="(\d+)"/)
+    {
+      $count++;
+      my $a=($2<=$start && $start <=$3)?1:0;
+      print "<tr><td>$count <a href='$base1a$2'>".($a?"<b>":"").sanitizeHTML($1).($a?"</b>":"")."</a></td></tr>";
+    }
+  }
+  close CASE;
+  print "</table>";
 }
 
 print "</body>\n";
