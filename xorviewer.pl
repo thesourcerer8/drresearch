@@ -227,7 +227,16 @@ if(open CASE,"<$casefn")
     {
       $count++;
       my $a=($2<=$start && $start <=$3)?1:0;
-      print "<tr><td>$count <a href='$base1a$2'>".($a?"<b>":"").sanitizeHTML($1).($a?"</b>":"")."</a></td></tr>";
+      print "<tr><td>$count <a href='$base1a$2'>".($a?"<b>":"").sanitizeHTML($1).($a?"</b>":"")."</a>";
+      my $d=$3-$2+1;
+      if($1 eq "DATA" && $d>512)
+      {
+        foreach(1 .. ($d/512)-1)
+	{
+          print " <a href='$base1a".($2+$_*512)."'>+$_</a>";
+	}
+      }
+      print "</td></tr>";
     }
   }
   close CASE;
