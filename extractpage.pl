@@ -1,5 +1,6 @@
 #!/usr/bin/perl -w
 use strict;
+use bigint;
 
 print "$0 dump.dump 0xPosition Pagesize output.dump\n";
 
