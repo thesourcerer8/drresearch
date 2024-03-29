@@ -202,7 +202,7 @@ int main(int argc, char* argv[])
           {
             memcpy(pWriteSector+tgt,pWriteSector,16);
 	  }
-          if(bittargetsector==(patternpos-1) && patternmod)
+          if(bittargetsector==(patternpos-1) && (patternmod&1))
           {
             int bittargetbyte=(pattern>>3) & 0x1FF;
 	    int bittargetbit=pattern&7;

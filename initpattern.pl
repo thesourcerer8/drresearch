@@ -154,7 +154,7 @@ foreach my $block (0 .. $size/512)
     {
       $data=sprintf("P%011X%04X",$pattern,$patternpos) x (512/16); # "\x00" x 512; #"0123456789abcdef"x(512/16);
       die "data not 512 bytes long!\n" if(length($data)!=512);
-      if($bittargetsector==($patternpos-1) && $patternmod)
+      if($bittargetsector==($patternpos-1) && ($patternmod&1))
       {
         my $bittargetbyte=($pattern>>3) & 0x1FF;
         my $bittargetbit=$pattern&7;
