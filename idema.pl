@@ -1,5 +1,7 @@
 #!/usr/bin/perl -w
 
+# WARNING: THERE IS A NEW STANDARD: https://members.snia.org/document/dl/25903 WHICH SUPERSEEDED IDEMA!
+
 sub idema_gb2lba($) # ($GB)
 {
   my $AdvertisedCapacity=$_[0];
