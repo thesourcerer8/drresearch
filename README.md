@@ -76,5 +76,11 @@ The dumpdecoder.py is a very simple version of the decoder, which primarily work
 During our research we came up with a filename convention that greatly eased research, development and debugging, that we encourage everyone to adopt:
 For physical dump files, please put the page size in bytes into the filename, e.g. simulated(9156p).dump or upload(9156p).dump
 
+## GUI Tool (drresearch-gui.py)
+For a more user-friendly interface, we offer the drresearch-gui.py tool. It provides a graphical interface for performing the tasks mentioned above.
+
+![drresearch-gui](https://github.com/DRCRecoveryData/drresearch/assets/85211068/09abd7a7-0b88-4c22-bdbc-f2c080952bd2)
+
+
 # Contact
 If you have any questions or problems that you want to discuss publically, you can use the Issue system from GitHub in the menu on the top, or discuss it on hddguru. If you want to reach me personally, feel free to send direct messages on hddguru.
