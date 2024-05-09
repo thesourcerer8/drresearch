@@ -1,5 +1,7 @@
 #!/usr/bin/perl
 use CGI qw(:standard :cgi-lib);
+use MIME::Base64 qw(encode_base64);
+use GD;
 
 my $query=new CGI;
 my %in;
@@ -15,6 +17,28 @@ my $start=int($in{'start'} || 0);
 my $xormode=int($in{'xormode'} || 0);
 my $pagestart=int($in{'pagestart'} || 0);
 my $xoroffset=int($in{'xoroffset'} || 0);
+
+my $displayhex=1;
+
+if($xormode & 2)
+{
+  $pagefrag=168;
+  $npages=812;
+  $displayhex=0;
+}
+
+
+my $img = new GD::Image($pagefrag*8,$npages);
+my $white = $img->colorAllocate(255,255,255);
+my $black = $img->colorAllocate(0,0,0);
+my $red = $img->colorAllocate(255,0,0);
+my $green = $img->colorAllocate(0,255,0);
+
+$img->setAntiAliasedDontBlend($white);
+$img->setAntiAliasedDontBlend($black);
+$img->setAntiAliasedDontBlend($green);
+$img->setAntiAliasedDontBlend($red);
+#$img->fill(0,0,$black);
 
 sub readfile($)
 {
@@ -89,6 +113,7 @@ if(open($IN,"<$dump"))
 {
   binmode $IN;
   my $base1="?dump=".sanitizeHTML($dump)."&pagesize=".sanitizeHTML($pagesize)."&pagesperblock=$pagesperblock&xormode=\"+mydivtoggle+\"&xoroffset=".int($xoroffset)."&pagestart=".int($pagestart)."&start=";
+  my $stay=$base1.$start;
   my $base1a="?dump=".sanitizeHTML($dump)."&pagesize=".sanitizeHTML($pagesize)."&pagesperblock=$pagesperblock&xormode=$xormode&xoroffset=".int($xoroffset)."&pagestart=".int($pagestart)."&start=";
   my $left=$base1.($start-($pagefrag>>1));
   my $right=$base1.($start+($pagefrag>>1));
@@ -101,15 +126,21 @@ if(open($IN,"<$dump"))
   my $minus=$base3.($xoroffset-1);
   my $plus=$base3.($xoroffset+1);
   my $toggle="?dump=".sanitizeHTML($dump)."&pagesize=".sanitizeHTML($pagesize)."&pagesperblock=$pagesperblock&xormode=\"+mydivtoggle+\"&xoroffset=".int($xoroffset)."&pagestart=".int($pagestart)."&start=".int($start);
+  my $tit=sanitizeHTML($dump);
   print <<EOF
 <html>
+<head><title>$tit</title>
+<style>
+* {font-family: Verdana; line-height:14px }
+pre {font-family: Courier New ; font-size: 13px ; line-height: 14px}
+</style>
 <script>
 	var mydivtoggle=$xormode;
 	function mytoggle()
 	{
-	  mydivtoggle=1-mydivtoggle; 
-	  document.getElementById('mydiv1').style=mydivtoggle?'position:fixed; opacity:20%; color: red; z-index: 0':'position:fixed; opacity:100%; color: red; z-index: 1'; 
-	  document.getElementById('mydiv2').style=mydivtoggle?'position:fixed; opacity:100%; color:darkgreen; z-index: 1':'position:fixed; opacity:20%; color:darkgreen; z-index: 0';
+	  mydivtoggle=mydivtoggle ^ 1;
+	  document.getElementById('mydiv1').style=mydivtoggle?'position:absolute; opacity:20%; color: red; z-index: 0':'position:absolute; opacity:100%; color: red; z-index: 1';
+	  document.getElementById('mydiv2').style=mydivtoggle?'position:absolute; opacity:100%; color:darkgreen; z-index: 1':'position:absolute; opacity:20%; color:darkgreen; z-index: 0';
 	}
 	function mymovefunc(e)
 	{
@@ -122,7 +153,7 @@ if(open($IN,"<$dump"))
 	    }
 	  }
 	  else if(ecode=='ArrowRight' || ecode=='KeyD')
-	  { 
+	  {
     	    location.href="$right";
 	  }
 	  else if(ecode=='ArrowLeft' || ecode=='KeyA')
@@ -157,6 +188,21 @@ if(open($IN,"<$dump"))
 	  {
 	    location.href="$minus";
 	  }
+	  else if(ecode=='Digit1')
+	  {
+	    mydivtoggle=0;
+	    location.href="$stay";
+	  }
+	  else if(ecode=='Digit2')
+	  {
+	    mydivtoggle=1;
+	    location.href="$stay";
+	  }
+	  else if(ecode=='Digit3')
+	  {
+	    mydivtoggle=2;
+	    location.href="$stay";
+	  }
 	  else if(ecode=='Space')
 	  {
 	    mytoggle();
@@ -167,59 +213,15 @@ if(open($IN,"<$dump"))
 	  }
 	}
 </script>
+</head>
 <body onkeydown='javscript:mymovefunc(event)'>
 EOF
 ;
 
-print "<div style='position:fixed'>Stats: pagesize:".int($pagesize)." pagesperblock:$pagesperblock".(length($xor)?" xorsize:".length($xor):"")." start:".int($start)." pagestart:".int($pagestart)." block:".int($pagestart/$pagesperblock)."/page:".($pagestart % $pagesperblock)." Total-Blocks:".int($dumpsize/$pagesize/$pagesperblock).(length($xor)?" XOR-Offset:".int($xoroffset):"")."</div><br/>\n";
-
-if(length($xor))
-{
-print <<EOF
-	<input type="button" onclick="javascript:mytoggle();" value='XOR ON/OFF'/>
-EOF
-;
-}
-
-print "<div id='mydiv1' style='".($xormode?'position:fixed; opacity:20%; color: red; z-index: 0':'position:fixed; opacity:100%; color: red; z-index: 1')."'/><pre>";
-#print tell($IN)."\n";
-
-my $ret=seek($IN,$pagestart*$pagesize,0);
-#print "R:$ret ".($pagestart*$pagesize)."\n";
-foreach(0 .. $npages)
-{
-  my $content="";
-  #print tell($IN)."\n";
-  read $IN,$content,$pagesize;
-  #print tell($IN)."\n";
-  print sanitizeHTML(bin2hexascii(substr($content,$start,$pagefrag)))."\n";
-}
-print "</pre></div>\n";
-
-if(defined($xor))
-{
-  print "<div id='mydiv2' style='".($xormode?'position:fixed; opacity:100%; color:darkgreen; z-index: 1':'position:fixed; opacity:20%; color:darkgreen; z-index: 0')."'/><pre>";
-  my $ret2=seek($IN,$pagestart*$pagesize,0);
-  #print "R:$ret2 ".($pagestart*$pagesize)."\n";
-  foreach(0 .. $npages)
-  {
-    my $content="";
-    #print tell($IN)."\n";
-    read $IN,$content,$pagesize;
-    #print tell($IN)."\n";
-    my $xorpage=($_+$pagestart+$xoroffset) % $pagesperblock;
-    $xorpage=int($xorpage/3) if(($pagestart/$pagesperblock)<207 && $dump=~m/2251-11/);
-    print sanitizeHTML(bin2hexascii(substr(($content ^ substr($xor,$xorpage*$pagesize,$pagesize)),$start,$pagefrag)))."\n";
-  }
-  print "</pre></div>\n";
-}
-
-
-
 my $casefn=$dump; $casefn=~s/[^\/\\]*$/download.case/;
 if(open CASE,"<$casefn")
 {
-  print "<table align='right'><tr><th>Page structure</th></tr>";
+  print "<table align='right' style='line-height:14px'><tr><th>Page structure</th></tr>";
   my $count=0;
   while(<CASE>)
   {
@@ -227,6 +229,7 @@ if(open CASE,"<$casefn")
     {
       $count++;
       my $a=($2<=$start && $start <=$3)?1:0;
+      next if($1 eq "Page");
       print "<tr><td>$count <a href='$base1a$2'>".($a?"<b>":"").sanitizeHTML($1).($a?"</b>":"")."</a>";
       my $d=$3-$2+1;
       if($1 eq "DATA" && $d>512)
@@ -240,10 +243,75 @@ if(open CASE,"<$casefn")
     }
   }
   close CASE;
-  print "</table>";
+  print "</table>\n";
 }
 
-print "</body>\n";
+
+print "<div>Stats: pagesize:".int($pagesize)." pagesperblock:$pagesperblock".(length($xor)?" xorsize:".length($xor):"")." start:".int($start)." pagestart:".int($pagestart)." block:".int($pagestart/$pagesperblock)."/page:".($pagestart % $pagesperblock)." Total-Blocks:".int($dumpsize/$pagesize/$pagesperblock).(length($xor)?" XOR-Offset:".int($xoroffset):"")."</div><br/>\n";
+
+if(length($xor))
+{
+print <<EOF
+	<input type="button" onclick="javascript:mytoggle();" value='XOR ON/OFF'/>
+EOF
+;
+}
+
+print "<div id='mydiv1' style='".(($xormode&1)?'position:absolute; opacity:20%; color: red; z-index: 0':'position:absolute; opacity:100%; color: red; z-index: 1')."'/><br/><br/><br/><pre>";
+#print tell($IN)."\n";
+
+my $ret=seek($IN,$pagestart*$pagesize,0);
+#print "R:$ret ".($pagestart*$pagesize)."\n";
+foreach(0 .. $npages)
+{
+  my $content="";
+  #print tell($IN)."\n";
+  read $IN,$content,$pagesize;
+  #print tell($IN)."\n";
+  my $fragment=substr($content,$start,$pagefrag);
+  print sanitizeHTML(bin2hexascii($fragment))."\n" if($displayhex);
+  if(!defined($xor))
+  {
+    foreach my $x(0 .. $pagefrag*8)
+    {
+      $img->setPixel($x,$_,vec($fragment,$x,1)?$white:$black);
+    }
+  }
+}
+print "</pre></div>\n";
+
+if(defined($xor))
+{
+  print "<div id='mydiv2' style='".(($xormode&1)?'position:absolute; opacity:100%; color:darkgreen; z-index: 1':'position:absolute; opacity:20%; color:darkgreen; z-index: 0')."'/><br/><br/><br/><pre>";
+  my $ret2=seek($IN,$pagestart*$pagesize,0);
+  #print "R:$ret2 ".($pagestart*$pagesize)."\n";
+  foreach(0 .. $npages)
+  {
+    my $content="";
+    #print tell($IN)."\n";
+    read $IN,$content,$pagesize;
+    #print tell($IN)."\n";
+    my $xorpage=($_+$pagestart+$xoroffset) % $pagesperblock;
+    $xorpage=int($xorpage/3) if(($pagestart/$pagesperblock)<207 && $dump=~m/2251-11/);
+    my $plainfragment=substr($content,$start,$pagefrag);
+    my $xorfragment=$plainfragment ^ substr($xor,$xorpage*$pagesize+$start,$pagefrag);
+    print sanitizeHTML(bin2hexascii($xorfragment))."\n" if($displayhex);
+    foreach my $x(0 .. $pagefrag*8)
+    {
+      $img->setPixel($x,$_,vec($xorfragment,$x,1)?(vec($plainfragment,$x,1)?$white:$green):(vec($plainfragment,$x,1)?$red:$black));
+    }
+
+  }
+  print "</pre></div>\n";
+}
+
+print "Image: ";
+
+print "\n<img src='data:image/png;base64,".encode_base64($img->png)."'/>";
+
+
+
+print "</body>\n</html>";
 
 
 
