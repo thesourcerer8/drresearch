@@ -90,11 +90,11 @@ sub mymin($$)
 our $errors=0;
 our $warnings=0;
 
-sub maj(@)
+sub maj34(@) # 3/4 majority function to remove random noise in the ECC area, has a threshold of 3/4 if enough samples are given, 2/3 if only 3 samples are given and just returns the first sample if 1 or 2 samples are given
 {
   my $v=scalar(@_);
   my $taken=$v&1?$v:$v-1;
-  my $th=($taken+1)>>1;
+  my $th=$v>3 ? int(($taken+1)*3/4) : int(($taken+1)*2/3);
 
   return $_[0] if($v<3);
 
@@ -339,7 +339,7 @@ print "Dump fully loaded.\n";
 
 print "Calculating XOR pattern from ".scalar(@majpatterns)." patterns\n";
 
-my $xorpattern=maj(@majpatterns);
+my $xorpattern=maj34(@majpatterns);
 
 open(OUT,">:raw",$xorfn) || die "Could not open XOR key file $xorfn for writing: $!\n";
 binmode OUT;
