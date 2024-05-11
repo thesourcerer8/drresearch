@@ -2,6 +2,7 @@
 use strict;
 use List::MoreUtils qw(uniq);
 use Getopt::Long;
+use File::Spec;
 
 my $maximumblocks=49;
 
@@ -32,11 +33,11 @@ sub popcount($)
 
 my $pagesize=4000; # Bytes
 my $ecccoverage=1024; # Bytes
-my @datapos=(0,1500);
+my @datapos=();
 my $datasize=1024;
-my @sapos=(3512);
+my @sapos=();
 my $sasize=8;
-my @eccpos=(1024,2524);
+my @eccpos=();
 my $eccsize=476;
 my $pagesperblock=128;
 
@@ -146,7 +147,7 @@ if(open CASE,"<$casefn")
     $pagesize=$1 if(m/^Page +(\d+)\s*$/); # FE support
     if(m/^Block +0x([0-9a-fA-F]+)\s*$/) # FE support
     {
-      print "FE Chip.txt format detected\n";	    
+      print "FE Chip.txt format detected\n";
       $blocksize=hex($1);
       $pagesperblock=$blocksize/$pagesize;
     }
@@ -326,7 +327,7 @@ for(my $pos=0;$pos<=($size-512);$pos+=$blocksize)
 {
   seek(IN,$pos,0);
   my $in="";
-  my $read=read IN,$in,$blocksize;
+  my $read=read IN,$in,$bestoffset+6;
   if(substr($in,$bestoffset,6) eq $bestpattern)
   {
     seek(IN,$pos,0);
@@ -347,4 +348,181 @@ print OUT $xorpattern;
 close OUT;
 
 print STDERR "Writing out final XOR pattern to $xorfn\n";
+
+if(scalar(@datapos)<1 || scalar(@sapos)<1 || scalar(@eccpos)<1)
+{
+  print "Analyzing the page areas...\n";
+
+  my $blockpattern=0;
+  my %sectorpositions=();
+  my %blockpos=();
+  for(my $pos=0;$pos<=($size-512);$pos+=$blocksize)
+  {
+    seek(IN,$pos,0);
+    my $in="";
+    my $read=read IN,$in,$bestoffset+6;
+    if(substr($in,$bestoffset,6) eq ($bestpattern^'|Block'))
+    {
+      $blockpattern++;
+      seek(IN,$pos,0);
+      read IN,$in,$blocksize;
+      $in^=$xorpattern;
+      my $mypos=0;
+      my $count=0;
+      while(($mypos=index($in,'|Block',$mypos))>=0)
+      {
+	$count++;
+        print "Found |Block at $mypos -> ".($mypos % $pagesize)."\n";
+	$sectorpositions{$mypos % $pagesize}++;
+        $mypos+=511;
+      }
+      $blockpos{$count}=$pos;
+      last if($blockpattern>2);
+    }
+  }
+  my @sectorpos=sort {$a <=> $b} keys %sectorpositions;
+  print "sectorpos: ".join(",",@sectorpos)."\n";
+  foreach(@sectorpos)
+  {
+    push @datapos,$_ unless(defined($sectorpositions{$_-512}));
+  }
+  print "datapos: ".join(",",@datapos)."\n";
+  $datasize=512;
+  while(defined($sectorpositions{$datapos[0]+$datasize}))
+  {
+    $datasize+=512;
+  }
+  print "datasize: $datasize\n";
+
+  my $bposk=0;
+  foreach(keys %blockpos)
+  {
+    if($_>=$bposk)
+    {
+      $bposk=$_;
+    }
+  }
+  my $bposv=$blockpos{$bposk};
+  my %bytevote=();
+  my $nextpos=0;
+
+  while($nextpos<$pagesize)
+  {
+    if(defined($sectorpositions{$nextpos}))
+    {
+      foreach($nextpos .. $nextpos+511)
+      {
+        $bytevote{$_}='DATA';
+      }
+      $nextpos+=512;
+    }
+    else
+    {
+      my $imagefilename=File::Spec->rel2abs($dumpfn); $imagefilename=~s/ /%20/g;
+      print "Analyzing Byte $nextpos in the page: http://localhost/cgi-bin/drresearch/xorviewer.pl?dump=$imagefilename&pagesize=$pagesize&pagesperblock=$pagesperblock&xormode=0&xoroffset=0&pagestart=388224&start=$nextpos\n";
+      my $pv="";
+      foreach(0 .. $pagesperblock-2)
+      {
+        seek(IN,$bposv+$nextpos+$pagesize*$_,0);
+	my $in="";
+        read IN,$in,1;
+        $pv.=$in;
+      }
+      my $n=length($pv);
+      my $threshold=int($n/4);
+
+      my %bitvotes=();
+      foreach my $bit (0 .. 7)
+      {
+	my $bitkind='?';
+        my $v=0;
+        my $x=0;
+        foreach(0 .. $n-1)
+        {
+          my $nv=vec($pv,($_<<3)+$bit,1);
+	  if($v ne $nv)
+	  {
+            $x++;
+	    $v=$nv;
+	  }
+	}
+        $bitkind=$x>$threshold?'ECC':'SA';
+	print "x:$x->$bitkind ";
+        $bitvotes{$bitkind}++;
+      }
+      print "\n";
+      my @bitvote=sort {$bitvotes{$a} <=> $bitvotes{$b}} keys %bitvotes;
+      print "Bits $nextpos:$_ = $bitvotes{$_} votes\n" foreach(@bitvote);
+      $bytevote{$nextpos}=$bitvote[-1];
+      print "Decision: $nextpos=$bytevote{$nextpos}\n";
+      $nextpos++;
+    }
+  }
+
+  my @atype=();
+  my @asize=();
+  my @apos=();
+  my $start=0;
+  my $t=$bytevote{0};
+
+  foreach(1 .. $pagesize-1)
+  {
+    if($t ne $bytevote{$_})
+    {
+      push @atype,$t;
+      push @asize,$_-$start;
+      push @apos,$start;
+      $start=$_;
+      $t=$bytevote{$_};
+    }
+  }
+  foreach(1 .. scalar(@atype)-2)
+  {
+    if($atype[$_-1] eq $atype[$_+1] && $asize[$_]<8)
+    {
+      print "Detected a short anomaly at $apos[$_] with size $asize[$_] and type $atype[$_] between 2 $atype[$_-1]'s.\n";
+      foreach my $p($apos[$_] .. $apos[$_]+$asize[$_]-1)
+      {
+        $bytevote{$p}=$atype[$_-1];
+      }
+    }
+  }
+
+
+  $start=0;
+  $t=$bytevote{0};
+  open CASE,">$dumpfn.discovered.case";
+print CASE <<EOF
+<?xml version="1.0"?>
+<Project>
+  <info>This is an artifical case file with values discovered by xorsearch</info>
+  <Records>
+EOF
+;
+  foreach(1 .. $pagesize-1)
+  {
+    if($t ne $bytevote{$_})
+    {
+      print "$start - ".($_-1)." : $t\n";
+      print CASE "    <Record StructureDefinitionName=\"$t\" StartAddress=\"$start\" StopAddress=\"".($_-1)."\" />\n";
+      $start=$_;
+      $t=$bytevote{$_};
+    }
+  }
+  my $pagem1=$pagesize-1;
+  my $actualblocksize=$pagesize*$pagesperblock;
+  print CASE <<EOF
+  </Records>
+  <Records>
+    <Record StructureDefinitionName="Page" StartAddress="0" StopAddress="$pagem1" />
+  </Records>
+  <StructureDefinition Name="Page" Length="2" IsFindStructure="False">
+  <Page_size>$pagesize</Page_size>
+  <Actual_block_size>$actualblocksize</Actual_block_size>
+</Project>
+EOF
+;
+  close CASE;
+}
+
 print STDERR "Done.\n";
