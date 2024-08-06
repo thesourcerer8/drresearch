@@ -274,7 +274,7 @@ foreach my $pat(sort keys %startpattern)
 {
   #$goodblocks+=$foundpattern{$pat^$bestpattern};
   $goodblockheaders{$pat^$bestpattern}=1;
-  print "Orig: ".bin2hex($pat)." -> XORed: ".bin2hex($pat ^ $bestpattern)." Found: ".$foundpattern{$pat^$bestpattern}."\n";
+  print "Orig: ".bin2hex($pat)." -> XORed: ".bin2hex($pat ^ $bestpattern)." Found: ".($foundpattern{$pat^$bestpattern}||"none")."\n";
 }
 my %stat=();
 foreach my $pat(sort keys %foundpattern)
@@ -318,6 +318,14 @@ foreach(sort keys %stat)
   print "Stat: $_ $stat{$_} ".int($stat{$_}*$blocksize/1000/1000/1000)."GB\n";
 }
 print "Good pattern Blocks: $goodblocks\n00/FF Blocks: $flashblocks\nNear blocks: $nearblocks\nRemaining blocks: ".($nblocks-$goodblocks-$flashblocks-$nearblocks)."\n";
+
+if($bestmatch<4)
+{
+  print "We could not find all 5 patterns in this dump, so we cannot automatically extract a XOR key from this dump.\n";
+  print "This dump seems to be encrypted, not just XOR'ed.\n" if($stat{'UNKNOWN'} > $stat{'GOOD'}*10);
+  exit;
+}
+
 
 
 print "Loading maximum $maximumblocks full blocks from dump...\n";
@@ -402,7 +410,7 @@ if(scalar(@datapos)<1 || scalar(@sapos)<1 || scalar(@eccpos)<1)
       $bposk=$_;
     }
   }
-  my $bposv=$blockpos{$bposk};
+  my $bposv=$blockpos{$bposk}||0;
   my %bytevote=();
   my $nextpos=0;
 
