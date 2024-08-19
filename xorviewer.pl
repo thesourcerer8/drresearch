@@ -120,6 +120,8 @@ if(open($IN,"<$dump"))
   my $base2="?dump=".sanitizeHTML($dump)."&pagesize=".sanitizeHTML($pagesize)."&pagesperblock=$pagesperblock&xormode=\"+mydivtoggle+\"&xoroffset=".int($xoroffset)."&start=".int($start)."&pagestart=";
   my $up=$base2.($pagestart-1);
   my $down=$base2.($pagestart+1);
+  my $up2=$base2.($pagestart-$npages);
+  my $down2=$base2.($pagestart+$npages);
   my $pageup=$base2.($pagestart-$pagesperblock);
   my $pagedown=$base2.($pagestart+$pagesperblock);
   my $base3="?dump=".sanitizeHTML($dump)."&pagesize=".sanitizeHTML($pagesize)."&pagesperblock=$pagesperblock&xormode=\"+mydivtogle+\"&start=".int($start)."&pagestart=".int($pagestart)."&xoroffset=";
@@ -150,6 +152,14 @@ pre {font-family: Courier New ; font-size: 13px ; line-height: 14px}
 	    if(ecode=='Home')
 	    {
 	      location.href="$base2";
+	    }
+	    else if(ecode=='ArrowUp' || ecode=='KeyW')
+	    {
+	      location.href="$up2";
+	    }
+	    else if(ecode=='ArrowDown' || ecode=='KeyS')
+	    {
+	      location.href="$down2";
 	    }
 	  }
 	  else if(ecode=='ArrowRight' || ecode=='KeyD')
@@ -307,7 +317,7 @@ if(defined($xor))
 
 print "Image: ";
 
-print "\n<img src='data:image/png;base64,".encode_base64($img->png)."'/>";
+print "\n<img src='data:image/png;base64,".encode_base64($img->png)."' style='box-shadow: 0px 0px 2px 2px gold'/>"; # rgba(0, 0, 0, .3)'/>";
 
 
 
