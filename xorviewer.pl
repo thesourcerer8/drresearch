@@ -226,6 +226,10 @@ pre {font-family: Courier New ; font-size: 13px ; line-height: 14px}
   {
     document.getElementById('coords').innerHTML='X:'+event.offsetX+' Y:'+event.offsetY;
   }
+  function gotocoords()
+  {
+    location.href="$base2"+($pagestart+event.offsetY);
+  }
 </script>
 </head>
 <body onkeydown='javscript:mymovefunc(event)'>
@@ -321,7 +325,7 @@ if(defined($xor))
 
 print "Image: ";
 
-print "\n<img src='data:image/png;base64,".encode_base64($img->png)."' style='box-shadow: 0px 0px 2px 2px gold' onmousemove='updatecoords(this); return(true);'/>";
+print "\n<img src='data:image/png;base64,".encode_base64($img->png)."' style='box-shadow: 0px 0px 2px 2px gold' onmousemove='updatecoords(this); return(true);' onclick='gotocoords(this);')/>";
 
 print "<div id='coords'>...</div>";
 
