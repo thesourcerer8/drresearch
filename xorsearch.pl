@@ -526,7 +526,7 @@ EOF
   <Records>
     <Record StructureDefinitionName="Page" StartAddress="0" StopAddress="$pagem1" />
   </Records>
-  <StructureDefinition Name="Page" Length="2" IsFindStructure="False">
+  <StructureDefinition Name="Page" Length="2" IsFindStructure="False" />
   <Page_size>$pagesize</Page_size>
   <Actual_block_size>$actualblocksize</Actual_block_size>
 </Project>
