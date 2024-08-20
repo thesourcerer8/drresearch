@@ -326,7 +326,7 @@ if($bestmatch<4)
   exit;
 }
 
-
+my $imagefilename=File::Spec->rel2abs($dumpfn); $imagefilename=~s/ /%20/g;
 
 print "Loading maximum $maximumblocks full blocks from dump...\n";
 print "If it takes too much RAM and crashes, then please reduce the \$maximumblocks parameter in the script.\n";
@@ -341,12 +341,15 @@ for(my $pos=0;$pos<=($size-512);$pos+=$blocksize)
     seek(IN,$pos,0);
     read IN,$in,$blocksize;
     push @majpatterns,$in;
+    print "XOR from block ".($pos/$blocksize).": http://localhost/cgi-bin/drresearch/xorviewer.pl?dump=$imagefilename&pagesize=$pagesize&pagesperblock=$pagesperblock&xormode=2&xoroffset=0&pagestart=".($pos/$pagesize)."&start=0\n";
     last if(scalar(@majpatterns)>=$maximumblocks);
   }
 }
 print "Dump fully loaded.\n";
 
 print "Calculating XOR pattern from ".scalar(@majpatterns)." patterns\n";
+print "Blocks used for XOR pattern:\n";
+
 
 my $xorpattern=maj34(@majpatterns);
 
@@ -426,7 +429,6 @@ if(scalar(@datapos)<1 || scalar(@sapos)<1 || scalar(@eccpos)<1)
     }
     else
     {
-      my $imagefilename=File::Spec->rel2abs($dumpfn); $imagefilename=~s/ /%20/g;
       print "Analyzing Byte $nextpos in the page: http://localhost/cgi-bin/drresearch/xorviewer.pl?dump=$imagefilename&pagesize=$pagesize&pagesperblock=$pagesperblock&xormode=0&xoroffset=0&pagestart=388224&start=$nextpos\n";
       my $pv="";
       foreach(0 .. $pagesperblock-2)
