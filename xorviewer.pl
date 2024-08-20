@@ -222,6 +222,10 @@ pre {font-family: Courier New ; font-size: 13px ; line-height: 14px}
 	    //alert(ecode);
 	  }
 	}
+  function updatecoords(a)
+  {
+    document.getElementById('coords').innerHTML='X:'+event.offsetX+' Y:'+event.offsetY;
+  }
 </script>
 </head>
 <body onkeydown='javscript:mymovefunc(event)'>
@@ -317,9 +321,9 @@ if(defined($xor))
 
 print "Image: ";
 
-print "\n<img src='data:image/png;base64,".encode_base64($img->png)."' style='box-shadow: 0px 0px 2px 2px gold'/>"; # rgba(0, 0, 0, .3)'/>";
+print "\n<img src='data:image/png;base64,".encode_base64($img->png)."' style='box-shadow: 0px 0px 2px 2px gold' onmousemove='updatecoords(this); return(true);'/>";
 
-
+print "<div id='coords'>...</div>";
 
 print "</body>\n</html>";
 
