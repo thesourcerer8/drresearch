@@ -4,7 +4,7 @@ use List::MoreUtils qw(uniq);
 use Getopt::Long;
 use File::Spec;
 
-my $maximumblocks=49;
+my $maximumblocks=9; # 49;
 
 
 # Some ideas for improvement:
@@ -368,11 +368,14 @@ my $xorpattern=maj34(@majpatterns);
 
 
 print "Trying to improve the XOR key page by page...\n";
+my $fixedoffset=$bestoffset;
+my $fixedpattern=$bestpattern;
 
 foreach my $page(1 .. $pagesperblock-1)
 {
   print "Trying page $page\n";
-  searchBestPattern($bestoffset,$page);
+  $bestmatch=0;
+  searchBestPattern($fixedoffset,$page);
   print "Page $page Best pattern: ".bin2hex($bestpattern)." Best match: $bestmatch Best offset: $bestoffset\n";
 
   if($bestmatch>=4)
@@ -393,7 +396,11 @@ foreach my $page(1 .. $pagesperblock-1)
       }
     }
     my $maj=maj34(@majpatterns);
-    if(substr($xorpattern,$page*$pagesize,$pagesize) ne $maj)
+    if(!defined($maj))
+    {
+      print "New XOR key for page $page could not be generated from ".scalar(@majpatterns)." patterns\n";
+    }
+    elsif(substr($xorpattern,$page*$pagesize,$pagesize) ne $maj)
     {
       print "Improving XOR key for $page\n";
       substr($xorpattern,$page*$pagesize,$pagesize)=$maj;
@@ -415,6 +422,9 @@ print OUT $xorpattern;
 close OUT;
 
 print "Writing out final XOR pattern to $xorfn\n";
+
+$bestoffset=$fixedoffset;
+$bestpattern=$fixedpattern;
 
 if(scalar(@datapos)<1 || scalar(@sapos)<1 || scalar(@eccpos)<1)
 {
