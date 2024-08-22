@@ -97,13 +97,13 @@ sub bin2hexascii($)
   return $value;
 }
 
-if($dump !~ m/\.(dump|dmp|raw|bin|img|decoded|g|m|xor)$/)
+if($dump !~ m/\.(dump|dmp|raw|bin|img|decoded|g|m|xor\d*)$/)
 {
   print "For security reasons, this hex viewer currently only allows to display .dump and .dmp files.";
   exit;
 }
 
-my $xor=readfile("$dump.xor");
+my $xor=readfile($in{'xorkey'} || "$dump.xor");
 
 my $pagesperblock=int($in{'pagesperblock'} || (($pagesize && length($xor)) ? length($xor)/int($pagesize) : 1));
 
@@ -313,7 +313,7 @@ if(defined($xor))
     $xorpage=int($xorpage/3) if(($pagestart/$pagesperblock)<207 && $dump=~m/2251-11/);
     my $plainfragment=substr($content,$start,$pagefrag);
     my $xorfragment=$plainfragment ^ substr($xor,$xorpage*$pagesize+$start,$pagefrag);
-    print sanitizeHTML(bin2hexascii($xorfragment))."\n" if($displayhex);
+    print sanitizeHTML(bin2hexascii($xorfragment))." $_\n" if($displayhex);
     foreach my $x(0 .. $pagefrag*8)
     {
       $img->setPixel($x,$_,vec($xorfragment,$x,1)?(vec($plainfragment,$x,1)?$white:$green):(vec($plainfragment,$x,1)?$red:$black));
