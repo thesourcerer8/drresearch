@@ -208,11 +208,13 @@ my $bestpattern=-1;
 my $bestmatch=0;
 my $bestoffset=0;
 
-for(my $offset=0;$offset<$pagesize;$offset+=2)
+
+sub searchBestPattern($$) # ($offset,$page)
 {
-  %foundpattern=();
-  print "Loading block starts from dump at offset $offset...\n";
-  for(my $pos=$offset;$pos<=($size-512);$pos+=$blocksize)
+  my ($offset,$page)=@_;
+  %foundpattern=(); # The global hash gets emptied here, so it always contains the results from the latest run
+  print "Loading block starts from dump at offset $offset in page $page...\n";
+  for(my $pos=$offset+$page*$pagesize;$pos<=($size-512);$pos+=$blocksize)
   {
     seek(IN,$pos,0);
     my $in="";
@@ -232,7 +234,7 @@ for(my $offset=0;$offset<$pagesize;$offset+=2)
       print "Pattern ".bin2hex($_)." ".$foundpattern{$_}." ".int($foundpattern{$_}*$blocksize/1000/1000/1000)."GB\n";
     }
   }
-  print "Analyzing for best 00 pattern:\n";
+  print "Analyzing for best 00 pattern in page $page:\n";
   my $max=$npat>30 ? 30 : $npat;
   $max-- if($max>1 && !($max&1));
   foreach my $i (0 .. $max-1)
@@ -256,20 +258,31 @@ for(my $offset=0;$offset<$pagesize;$offset+=2)
     }
   }
   my $nbestpatterns=$foundpattern{$bestpattern};
+  $nbestpatterns="N/A" if(!defined($nbestpatterns));
   print "Best match found: $bestmatch at offset $bestoffset - ".bin2hex($bestpattern)." - Occurances: $nbestpatterns\n";
   if($bestmatch>=4)
   {
-    print "We found all 5 patterns, we can stop searching.\n";
-    last;
+    print "We found all 5 patterns in page $page, we can stop searching.\n";
+    return;
   }
 }
+
+
+print "Searching for the beginning of the first DATA area, where we can find all the patterns\n";
+for(my $offset=0;$offset<$pagesize && $bestmatch<4;$offset+=2)
+{
+  searchBestPattern($offset,0);
+}
+
 print "Best pattern: ".bin2hex($bestpattern)." Best match: $bestmatch Best offset: $bestoffset\n";
 
 my $goodblocks=0;
 my $nearblocks=0;
 my $remainingblocks=0;
-my $flashblocks=0; # ($foundpattern{"\x00\x00\x00\x00\x00\x00"}||0)+($foundpattern{"\xff\xff\xff\xff\xff\xff"}||0);
+my $flashblocks=0;
 my %goodblockheaders=();
+
+# Some statistics:
 foreach my $pat(sort keys %startpattern)
 {
   #$goodblocks+=$foundpattern{$pat^$bestpattern};
@@ -353,12 +366,55 @@ print "Calculating XOR pattern from ".scalar(@majpatterns)." patterns\n";
 
 my $xorpattern=maj34(@majpatterns);
 
+
+print "Trying to improve the XOR key page by page...\n";
+
+foreach my $page(1 .. $pagesperblock-1)
+{
+  print "Trying page $page\n";
+  searchBestPattern($bestoffset,$page);
+  print "Page $page Best pattern: ".bin2hex($bestpattern)." Best match: $bestmatch Best offset: $bestoffset\n";
+
+  if($bestmatch>=4)
+  {
+    my @majpatterns=();
+    for(my $pos=$page*$pagesize;$pos<=($size-512);$pos+=$blocksize)
+    {
+      seek(IN,$pos,0);
+      my $in="";
+      my $read=read IN,$in,$bestoffset+6;
+      if(substr($in,$bestoffset,6) eq $bestpattern)
+      {
+        seek(IN,$pos,0);
+        read IN,$in,$pagesize;
+        push @majpatterns,$in;
+        print "XOR from block ".($pos/$blocksize).": http://localhost/cgi-bin/drresearch/xorviewer.pl?dump=$imagefilename&pagesize=$pagesize&pagesperblock=$pagesperblock&xormode=2&xoroffset=0&pagestart=".($pos/$pagesize)."&start=0\n";
+        last if(scalar(@majpatterns)>=$maximumblocks);
+      }
+    }
+    my $maj=maj34(@majpatterns);
+    if(substr($xorpattern,$page*$pagesize,$pagesize) ne $maj)
+    {
+      print "Improving XOR key for $page\n";
+      substr($xorpattern,$page*$pagesize,$pagesize)=$maj;
+    }
+    else
+    {
+      print "XOR key was good for page $page\n";
+    }
+  }
+
+}
+
+
+print "XOR key generation complete.\n";
+
 open(OUT,">:raw",$xorfn) || die "Could not open XOR key file $xorfn for writing: $!\n";
 binmode OUT;
 print OUT $xorpattern;
 close OUT;
 
-print STDERR "Writing out final XOR pattern to $xorfn\n";
+print "Writing out final XOR pattern to $xorfn\n";
 
 if(scalar(@datapos)<1 || scalar(@sapos)<1 || scalar(@eccpos)<1)
 {
@@ -383,7 +439,7 @@ if(scalar(@datapos)<1 || scalar(@sapos)<1 || scalar(@eccpos)<1)
       while(($mypos=index($in,'|Block',$mypos))>=0)
       {
 	$count++;
-        print "Found |Block at $mypos -> ".($mypos % $pagesize)."\n";
+	#print "Found |Block at $mypos -> ".($mypos % $pagesize)."\n";
 	$sectorpositions{$mypos % $pagesize}++;
         $mypos+=511;
       }
@@ -429,7 +485,7 @@ if(scalar(@datapos)<1 || scalar(@sapos)<1 || scalar(@eccpos)<1)
     }
     else
     {
-      print "Analyzing Byte $nextpos in the page: http://localhost/cgi-bin/drresearch/xorviewer.pl?dump=$imagefilename&pagesize=$pagesize&pagesperblock=$pagesperblock&xormode=0&xoroffset=0&pagestart=388224&start=$nextpos\n";
+      #print "Analyzing Byte $nextpos in the page: http://localhost/cgi-bin/drresearch/xorviewer.pl?dump=$imagefilename&pagesize=$pagesize&pagesperblock=$pagesperblock&xormode=0&xoroffset=0&pagestart=388224&start=$nextpos\n";
       my $pv="";
       foreach(0 .. $pagesperblock-2)
       {
@@ -457,14 +513,14 @@ if(scalar(@datapos)<1 || scalar(@sapos)<1 || scalar(@eccpos)<1)
 	  }
 	}
         $bitkind=$x>$threshold?'ECC':'SA';
-	print "x:$x->$bitkind ";
+	#print "x:$x->$bitkind ";
         $bitvotes{$bitkind}++;
       }
-      print "\n";
+      #print "\n";
       my @bitvote=sort {$bitvotes{$a} <=> $bitvotes{$b}} keys %bitvotes;
-      print "Bits $nextpos:$_ = $bitvotes{$_} votes\n" foreach(@bitvote);
+      #print "Bits $nextpos:$_ = $bitvotes{$_} votes\n" foreach(@bitvote);
       $bytevote{$nextpos}=$bitvote[-1];
-      print "Decision: $nextpos=$bytevote{$nextpos}\n";
+      #print "Decision: $nextpos=$bytevote{$nextpos}\n";
       $nextpos++;
     }
   }
@@ -535,4 +591,4 @@ EOF
   close CASE;
 }
 
-print STDERR "Done.\n";
+print "Done.\n";
