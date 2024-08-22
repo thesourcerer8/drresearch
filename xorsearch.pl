@@ -333,6 +333,8 @@ print "If it takes too much RAM and crashes, then please reduce the \$maximumblo
 our @majpatterns=();
 for(my $pos=0;$pos<=($size-512);$pos+=$blocksize)
 {
+  #next if($imagefilename=~m/2258XT/ && $pos<=1572*$blocksize);
+  #last if($imagefilename=~m/2258XT/ && $pos>1572*$blocksize); # Trying a workaround for a 2258XT dump to only use the first 4 blocks
   seek(IN,$pos,0);
   my $in="";
   my $read=read IN,$in,$bestoffset+6;
@@ -348,8 +350,6 @@ for(my $pos=0;$pos<=($size-512);$pos+=$blocksize)
 print "Dump fully loaded.\n";
 
 print "Calculating XOR pattern from ".scalar(@majpatterns)." patterns\n";
-print "Blocks used for XOR pattern:\n";
-
 
 my $xorpattern=maj34(@majpatterns);
 
