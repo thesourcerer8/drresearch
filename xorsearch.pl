@@ -356,7 +356,7 @@ for(my $pos=0;$pos<=($size-512);$pos+=$blocksize)
     seek(IN,$pos,0);
     read IN,$in,$blocksize;
     push @majpatterns,$in;
-    print "XOR from block ".($pos/$blocksize).": http://localhost/cgi-bin/drresearch/xorviewer.pl?dump=$imagefilename&pagesize=$pagesize&pagesperblock=$pagesperblock&xormode=2&xoroffset=0&pagestart=".($pos/$pagesize)."&start=0\n";
+    print "XOR from block ".int($pos/$blocksize).": http://localhost/cgi-bin/drresearch/xorviewer.pl?dump=$imagefilename&pagesize=$pagesize&pagesperblock=$pagesperblock&xormode=2&xoroffset=0&pagestart=".int($pos/$pagesize)."&start=0\n";
     last if(scalar(@majpatterns)>=$maximumblocks);
   }
 }
