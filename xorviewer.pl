@@ -248,7 +248,7 @@ if(open CASE,"<$casefn")
       $count++;
       my $a=($2<=$start && $start <=$3)?1:0;
       next if($1 eq "Page");
-      print "<tr><td>$count <a href='$base1a$2'>".($a?"<b>":"").sanitizeHTML($1).($a?"</b>":"")."</a>";
+      print "<tr><td>$count <a href='$base1a$2' title='size:".($3-$2+1)."'>".($a?"<b>":"").sanitizeHTML($1).($a?"</b>":"")."</a>";
       my $d=$3-$2+1;
       if($1 eq "DATA" && $d>512)
       {
