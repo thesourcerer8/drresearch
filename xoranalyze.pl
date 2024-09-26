@@ -27,9 +27,10 @@ sub bin2hex($)
 }
 
 print "This XOR analyzer tool analyzes the patterns at the start of each page of a XOR key, in which pages/offsets does that pattern occur too?\n";
+print "Usage: $0 <pagesize> <xor key filename>\n";
 
-my $pagesize=18592;
-my $xorkey=readfile("01_01.dump.xor5");
+my $pagesize=$ARGV[0] || 18432;
+my $xorkey=readfile($ARGV[1] || "01_01.dump.xor");
 
 my $PAGES=length($xorkey)/$pagesize;
 print "Pages: $PAGES\n";
