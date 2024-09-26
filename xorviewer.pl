@@ -263,7 +263,10 @@ if(open CASE,"<$casefn")
   close CASE;
   print "</table>\n";
 }
-
+else
+{
+  print "<div align='right'><a href='http://www2.futureware.at/ldpc/ldpc.php'>Page Structure</a></div>";
+}
 
 print "<div>Stats: pagesize:".int($pagesize)." pagesperblock:$pagesperblock".(length($xor)?" xorsize:".length($xor):"")." start:".int($start)." pagestart:".int($pagestart)." block:".int($pagestart/$pagesperblock)."/page:".($pagestart % $pagesperblock)." Total-Blocks:".int($dumpsize/$pagesize/$pagesperblock).(length($xor)?" XOR-Offset:".int($xoroffset):"")."</div><br/>\n";
 
