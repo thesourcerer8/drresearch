@@ -46,7 +46,23 @@ SMI USB DISK USB Device         \\.\PHYSICALDRIVE1  SMI USB DISK USB Device     
 #### FE Case
 
 ```
-initpattern.exe 01_01.dump
+python FE_Merger.py
+```
+Result:
+```
+Enter the chip number (e.g., 1, 2, 3, 4): 1
+
+Starting merge for chip 1...
+Merging: 01_01.dump
+Merging: 01_02.dump
+Merging: 01_03.dump
+Merging: 01_04.dump
+Merge completed.
+
+=== Verification ===
+Total size of original files: 38654705664 bytes
+Size of merged file in new folder: 38654705664 bytes
+Verification successful: The merged file is saved in '01_01/01_01.dump'.
 ```
 Choose the correct device carefully to avoid overwriting the wrong device!
 Then run initpattern.exe with the DeviceID of the pendrive/SD-Card/MicroSD-card/...
