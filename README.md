@@ -41,6 +41,8 @@ Usage: initpattern.exe \\.\PhysicalDrive1 [size in MB] [data area size in Byte]
 Caption                         DeviceID            Model                           Partitions  Size
 WDC PC SN730 SDBQNTY-512G-1016  \\.\PHYSICALDRIVE0  WDC PC SN730 SDBQNTY-512G-1016  4           512105932800
 SMI USB DISK USB Device         \\.\PHYSICALDRIVE1  SMI USB DISK USB Device         1           8052549120
+
+initpattern.exe 01_01.dump
 ```
 
 #### FE Case
