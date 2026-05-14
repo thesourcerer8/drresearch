@@ -65,13 +65,14 @@ if($ARGV[1])
     print "ERROR: The datasize is not a multiple of 512 Bytes, please check the parameters!\n";
     exit(-1);
   }
+  print "Size of the image file to be written: $size\n";
   $overwritten=0;
 }
 else
 {
   seek($OUT,0,2);
   $size=tell($OUT);
-  print "Size of the device: $size\n";
+  print "Size of the physical device to be written to: $size\n";
   seek($OUT,0,0);
   $overwritten=1;
 }
@@ -114,6 +115,8 @@ print "Size: $size Bytes ".($size/1000/1000/1000)." GB\n";
 print "Creating a pattern for page size of $DATAsize Bytes.\n";
 my $nblocks=$size/512;
 
+system "date";
+
 if($overwritten)
 {
   print "First stage pattern for FTL recovery\n";
@@ -126,22 +129,43 @@ if($overwritten)
       print STDERR "WARNING: sector size is wrong in overwritten\n";
     }
     print $OUT $data;
-    my $percent=int(100*$block/$nblocks);
-    print STDERR "$block $percent\%\n" if(!($block %100000));
+    if(!($block %1000000))
+    {
+      my $percent=int(100*$block/$nblocks);
+      print STDERR "$block $percent\%\n";
+    }
   }
   print "Second stage pattern for LDPC and XOR recovery\n";
+  system "date";
 }
 
-seek($OUT,0,0);
+print "Pos: ".tell($OUT)."\n";
+print "Seeking: ".seek($OUT,0,0)."\n";
+print "Pos: ".tell($OUT)."\n";
 
 foreach my $block (0 .. $size/512)
 {
-  my $data=sprintf("|Block#%012d (0x%08X) Byte: %020d Pos: %10d MB\n***",$block,$block,$block*512,$block>>11);
-  $data.= "x"x(510-length($data))."\n\x00";
-  $data="\x00" x 512 if($block>=$border0 && $block<$border7);
-  $data="\x77" x 512 if($block>=$border7 && $block<$borderf);
-  $data="\xFF" x 512 if($block>=$borderf && $block<$borderphi);
-  if($block>=$borderphi && $block <$borderecc)
+  my $data="";
+  
+  if($block>=$border0 && $block<$border7)
+  {
+    $data="\x00" x 512;
+  }
+  elsif($block>=$border7 && $block<$borderf)
+  {
+    $data="\x77" x 512;
+  }
+  elsif($block>=$borderf && $block<$borderphi)
+  {
+    $data="\xFF" x 512;
+  }
+  else
+  {
+    $data=sprintf("|Block#%012d (0x%08X) Byte: %020d Pos: %10d MB\n***",$block,$block,$block*512,$block>>11);
+    $data.= "x"x(510-length($data))."\n\x00";
+  }
+
+  if($block>=$borderphi && $block <$borderecc) # overrides $data where needed, but reuses $data in some cases
   {
     my $patternsize=$eccreal*$eccreal*$majority;
     my $offset=$block-$borderphi;
@@ -153,7 +177,10 @@ foreach my $block (0 .. $size/512)
     if($patternpos>0)
     {
       $data=sprintf("P%011X%04X",$pattern,$patternpos) x (512/16); # "\x00" x 512; #"0123456789abcdef"x(512/16);
-      die "data not 512 bytes long!\n" if(length($data)!=512);
+      if(length($data)!=512)
+      {
+        print STDERR "WARNING: sector size is wrong in new LDPC pattern at block $block\n";
+      }
       if($bittargetsector==($patternpos-1) && ($patternmod&1))
       {
         my $bittargetbyte=($pattern>>3) & 0x1FF;
@@ -161,19 +188,30 @@ foreach my $block (0 .. $size/512)
 	#print "bittargetbyte: $bittargetbyte\nbittargetbit: $bittargetbit\n";
         substr($data,$bittargetbyte,1)=substr($data,$bittargetbyte,1)^pack("C",(1<<$bittargetbit));
       }
+      if(length($data)!=512)
+      {
+        print STDERR "WARNING: sector size is wrong in new LDPC pattern after bit change at block $block\n";
+      }
+
     }
   }
+
   if(length($data)!=512)
   {
-    print STDERR "WARNING: sector size is wrong in new pattern\n";
+    print STDERR "WARNING: sector size is wrong in new pattern at block $block\n";
   }
   print $OUT $data;
-  my $percent=int(100*$block/$nblocks);
-  print STDERR "$block $percent\%\n" if(!($block %1000000));
+  if(!($block %1000000))
+  {
+    my $percent=int(100*$block/$nblocks);
+    print STDERR "$block $percent\%\n";
+  }
 }
 
 close $OUT;
+system "sync";
 print STDERR "Pattern has been written to device/file $mydev\n";
 print STDERR "Pattern configuration has been written to the file $xmlfn in XML format.\n";
 print STDERR "You can now write the pattern image to the disk/pendrive/car with dd, balenaEtcher or PC3K, or use it in the controllersim.\n";
 print STDERR "Done.\n";
+system "date";

@@ -41,12 +41,30 @@ Usage: initpattern.exe \\.\PhysicalDrive1 [size in MB] [data area size in Byte]
 Caption                         DeviceID            Model                           Partitions  Size
 WDC PC SN730 SDBQNTY-512G-1016  \\.\PHYSICALDRIVE0  WDC PC SN730 SDBQNTY-512G-1016  4           512105932800
 SMI USB DISK USB Device         \\.\PHYSICALDRIVE1  SMI USB DISK USB Device         1           8052549120
+
+initpattern.exe 01_01.dump
 ```
 
 #### FE Case
 
 ```
-initpattern.exe 01_01.dump
+python FE_Merger.py
+```
+Result:
+```
+Enter the chip number (e.g., 1, 2, 3, 4): 1
+
+Starting merge for chip 1...
+Merging: 01_01.dump
+Merging: 01_02.dump
+Merging: 01_03.dump
+Merging: 01_04.dump
+Merge completed.
+
+=== Verification ===
+Total size of original files: 38654705664 bytes
+Size of merged file in new folder: 38654705664 bytes
+Verification successful: The merged file is saved in '01_01/01_01.dump'.
 ```
 Choose the correct device carefully to avoid overwriting the wrong device!
 Then run initpattern.exe with the DeviceID of the pendrive/SD-Card/MicroSD-card/...

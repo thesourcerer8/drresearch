@@ -86,7 +86,7 @@ int main(int argc, char* argv[])
     hDevice = CreateFileA(argv[1], GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, 0, NULL);
     if (hDevice == INVALID_HANDLE_VALUE)
     {
-      printf("CreateFileA returned an error when trying to open the file: %ld\n", GetLastError());
+      printf("CreateFileA returned an error when trying to open the file: %ld - %s", GetLastError(),GetLastErrorAsString());
       return 0;
     }
   }
@@ -220,7 +220,7 @@ int main(int argc, char* argv[])
       }
       else
       {
-        printf("Error when writing: %ld", GetLastError());  
+        printf("Error when writing: %ld - %s", GetLastError(),GetLastErrorAsString()); 
         return 0;
       }
     }
