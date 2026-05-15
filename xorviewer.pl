@@ -115,8 +115,10 @@ if(open($IN,"<$dump"))
   my $base1="?dump=".sanitizeHTML($dump)."&pagesize=".sanitizeHTML($pagesize)."&pagesperblock=$pagesperblock&xormode=\"+mydivtoggle+\"&xoroffset=".int($xoroffset)."&pagestart=".int($pagestart)."&start=";
   my $stay=$base1.$start;
   my $base1a="?dump=".sanitizeHTML($dump)."&pagesize=".sanitizeHTML($pagesize)."&pagesperblock=$pagesperblock&xormode=$xormode&xoroffset=".int($xoroffset)."&pagestart=".int($pagestart)."&start=";
-  my $left=$base1.($start-($pagefrag>>1));
-  my $right=$base1.($start+($pagefrag>>1));
+  my $left=$base1.($start-1);
+  my $right=$base1.($start+1);
+  my $left2=$base1.($start-($pagefrag>>1));
+  my $right2=$base1.($start+($pagefrag>>1));
   my $base2="?dump=".sanitizeHTML($dump)."&pagesize=".sanitizeHTML($pagesize)."&pagesperblock=$pagesperblock&xormode=\"+mydivtoggle+\"&xoroffset=".int($xoroffset)."&start=".int($start)."&pagestart=";
   my $up=$base2.($pagestart-1);
   my $down=$base2.($pagestart+1);
@@ -160,6 +162,14 @@ pre {font-family: Courier New ; font-size: 13px ; line-height: 14px}
 	    else if(ecode=='ArrowDown' || ecode=='KeyS')
 	    {
 	      location.href="$down2";
+	    }
+            else if(ecode=='ArrowRight' || ecode=='KeyD')
+	    {
+    	      location.href="$right2";
+	    }
+	    else if(ecode=='ArrowLeft' || ecode=='KeyA')
+	    {
+	      location.href="$left2";
 	    }
 	  }
 	  else if(ecode=='ArrowRight' || ecode=='KeyD')
