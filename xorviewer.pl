@@ -113,6 +113,7 @@ if(open($IN,"<$dump"))
 {
   binmode $IN;
   my $base1="?dump=".sanitizeHTML($dump)."&pagesize=".sanitizeHTML($pagesize)."&pagesperblock=$pagesperblock&xormode=\"+mydivtoggle+\"&xoroffset=".int($xoroffset)."&pagestart=".int($pagestart)."&start=";
+  my $basee=$base1.($pagesize-$pagefrag);
   my $stay=$base1.$start;
   my $base1a="?dump=".sanitizeHTML($dump)."&pagesize=".sanitizeHTML($pagesize)."&pagesperblock=$pagesperblock&xormode=$xormode&xoroffset=".int($xoroffset)."&pagestart=".int($pagestart)."&start=";
   my $left=$base1.($start-1);
@@ -199,6 +200,10 @@ pre {font-family: Courier New ; font-size: 13px ; line-height: 14px}
 	  else if(ecode=='Home')
 	  {
 	    location.href="$base1";
+	  }
+	  else if(ecode=='End')
+	  {
+	    location.href="$basee";
 	  }
 	  else if(ecode=='Comma')
 	  {
