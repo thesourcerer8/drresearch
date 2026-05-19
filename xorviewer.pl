@@ -138,6 +138,15 @@ if(open($IN,"<$dump"))
 <style>
 * {font-family: Verdana; line-height:14px }
 pre {font-family: Courier New ; font-size: 13px ; line-height: 14px}
+img { /* Für ältere Firefox-Versionen */
+  image-rendering: -moz-crisp-edges;
+  /* Für ältere Safari-Versionen */
+  image-rendering: -webkit-crisp-edges;
+  /* Standard-Definition für moderne Browser */
+  image-rendering: pixelated;
+  /* Alternativer Standardwert für scharfe Kanten */
+  image-rendering: crisp-edges;
+}
 </style>
 <script>
 	var mydivtoggle=$xormode;
