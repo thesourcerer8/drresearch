@@ -66,7 +66,7 @@ int main(int argc, char* argv[])
       targetsize=atol(argv[2])<<20;
       printf("Setting the target size to %lld bytes / %lld sectors / %lld MiB / %lld GiB.\n",targetsize,targetsize>>9,targetsize>>20,targetsize>>30);
     }
-    sprintf(xmlfn,"%s.xml",argv[1]);
+    snprintf(xmlfn,sizeof(xmlfn),"%s.xml",argv[1]);
   }
   if(argc>3)
   {
@@ -81,7 +81,7 @@ int main(int argc, char* argv[])
   long long border7=1024*1024*2; // 512MB 00
   long long borderf=1280*1024*2; // 256 MB 77
   long long borderphi=1536*1024*2; // 256 MB FF
-  long long borderecc=borderphi+eccreal*eccreal*majority*DATAsize*8+1; // lots of ECC (for 512B DA we dont need much, for 4KB we need 11GB, for 8GB a lot more)
+  long long borderecc=borderphi+(long long) eccreal*eccreal*majority*DATAsize*8+1; // lots of ECC (for 512B DA we dont need much, for 4KB we need 11GB, for 8GB a lot more)
 
   BYTE *pWriteBlock=(BYTE*)VirtualAlloc(NULL,(SIZE_T)BLOCKBYTES,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE);
   if(!pWriteBlock)
