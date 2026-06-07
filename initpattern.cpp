@@ -1,5 +1,9 @@
 #include <windows.h>
 #include <stdio.h>
+#include <string.h>
+
+#define BLOCKBYTES   (8LL * 1024 * 1024)
+#define BLOCKSECTORS (BLOCKBYTES / 512)
 
 // Converts Gigabytes to LBA Sectors
 long long idema_gb2lba(long long advertised)
@@ -22,7 +26,7 @@ const char *GetLastErrorAsString()
   memcpy(errorbuffer,messageBuffer,size);
   errorbuffer[size]=0;
   LocalFree(messageBuffer);
-  return errorbuffer;  
+  return errorbuffer;
 }
 
 void showUsage()
@@ -38,8 +42,7 @@ int main(int argc, char* argv[])
   int wearedone=0;
   long long sector=0;
   long long targetsize=-1; // in Bytes
-  BYTE pWriteBlock[4096] = { 0 };
-  BYTE *pWriteSector=pWriteBlock;
+  long long bufsectors=0;  // sectors currently staged in the write buffer
   int DATAsize=8192; // in Bytes
   char xmlfn[1000]="pattern.xml";
   FILE*handle=NULL;
@@ -54,13 +57,13 @@ int main(int argc, char* argv[])
     if(strlen(argv[2])>2 && !strcmp(argv[2]+strlen(argv[2])-2,"GB"))
     {
       sscanf(argv[2],"%lldGB",&targetsize);
-      targetsize=idema_gb2lba(targetsize)*512;
-      printf("Setting the target size to %lld MB / %lld sectors / %lld GiB.\n",targetsize>>11,targetsize,targetsize>>30);
+      targetsize=idema_gb2lba(targetsize)<<9;
+      printf("Setting the target size to %lld bytes / %lld sectors / %lld MiB / %lld GiB.\n",targetsize,targetsize>>9,targetsize>>20,targetsize>>30);
     }
     else
-    {    
-      targetsize=atol(argv[2])<<11;
-      printf("Setting the target size to %lld MB / %lld sectors / %lld GiB.\n",targetsize>>11,targetsize,targetsize>>30);
+    {
+      targetsize=atol(argv[2])<<20;
+      printf("Setting the target size to %lld bytes / %lld sectors / %lld MiB / %lld GiB.\n",targetsize,targetsize>>9,targetsize>>20,targetsize>>30);
     }
     sprintf(xmlfn,"%s.xml",argv[1]);
   }
@@ -78,12 +81,19 @@ int main(int argc, char* argv[])
   long long borderf=1280*1024*2; // 256 MB 77
   long long borderphi=1536*1024*2; // 256 MB FF
   long long borderecc=borderphi+eccreal*eccreal*majority*DATAsize*8+1; // lots of ECC (for 512B DA we dont need much, for 4KB we need 11GB, for 8GB a lot more)
-	
-  HANDLE hDevice = CreateFileA(argv[1], GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+
+  BYTE *pWriteBlock=(BYTE*)VirtualAlloc(NULL,(SIZE_T)BLOCKBYTES,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE);
+  if(!pWriteBlock)
+  {
+    fprintf(stderr,"ERROR: could not allocate a %lld byte write buffer.\n",(long long)BLOCKBYTES);
+    return -4;
+  }
+
+  HANDLE hDevice = CreateFileA(argv[1], GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_NO_BUFFERING, NULL);
 
   if (hDevice == INVALID_HANDLE_VALUE)
   {
-    hDevice = CreateFileA(argv[1], GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, 0, NULL);
+    hDevice = CreateFileA(argv[1], GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, FILE_FLAG_NO_BUFFERING, NULL);
     if (hDevice == INVALID_HANDLE_VALUE)
     {
       printf("CreateFileA returned an error when trying to open the file: %ld - %s", GetLastError(),GetLastErrorAsString());
@@ -95,7 +105,7 @@ int main(int argc, char* argv[])
   DeviceIoControl(hDevice, FSCTL_LOCK_VOLUME, NULL, 0, NULL, 0, &Ropen, NULL);
 
   DWORD lpBytesReturned=0;
-  DeviceIoControl(hDevice,IOCTL_DISK_GET_LENGTH_INFO,NULL,0,pWriteBlock,sizeof(pWriteBlock),&lpBytesReturned,NULL);
+  DeviceIoControl(hDevice,IOCTL_DISK_GET_LENGTH_INFO,NULL,0,pWriteBlock,512,&lpBytesReturned,NULL);
   if(lpBytesReturned==8)
   {
     targetsize=*(unsigned long long *)pWriteBlock;
@@ -132,55 +142,62 @@ int main(int argc, char* argv[])
   }
 
   printf("Creating old pattern for recovering the FTL\n");
+  bufsectors=0;
   while(!wearedone)
   {
-    pWriteSector=pWriteBlock+((sector&7)<<9); // We set the pointer to the current sector inside the 4096 Byte WriteBlock
+    BYTE *pWriteSector=pWriteBlock+(bufsectors<<9); // slot for the current sector inside the large write buffer
     sprintf((char*)pWriteSector,"|Block#%012lld (0x%08llX) Byte: %020lld Pos: %10lld MB\n*** OVERWRITTEN",sector,sector,sector*512,sector>>11);
     memset(pWriteSector+strlen((const char*)pWriteSector),'x',510-strlen((const char*)pWriteSector));
     pWriteSector[510] = '\n';
     pWriteSector[511] = 0x00;
-    if (((sector&7)==7) && !WriteFile(hDevice, pWriteBlock, 4096, &Ropen, NULL)) 
-    {
-      if(GetLastError()==ERROR_SECTOR_NOT_FOUND)
-      {
-        printf("Reached last sector.\n");
-        wearedone=1;
-      }
-      else
-      {
-	DWORD errorid=GetLastError();      
-        printf("Error when writing: %ld - %s", errorid,GetLastErrorAsString());  
-        return 0;
-      }
-    }
+    bufsectors++;
     sector++;
+    if((sector<<9)>=targetsize) wearedone=1;
+    if(bufsectors==BLOCKSECTORS || (wearedone && bufsectors>0))
+    {
+      if(!WriteFile(hDevice, pWriteBlock, (DWORD)(bufsectors<<9), &Ropen, NULL))
+      {
+        DWORD errorid=GetLastError();
+        if(errorid==ERROR_SECTOR_NOT_FOUND)
+        {
+          printf("Reached last sector.\n");
+          wearedone=1;
+        }
+        else
+        {
+          printf("Error when writing: %ld - %s", errorid,GetLastErrorAsString());
+          return 0;
+        }
+      }
+      bufsectors=0;
+    }
     if(!(sector&0x3ffff))
     {
       printf("Status: Sector %lld (%lld GB)\n",sector,sector/2/1024/1024);
     }
-    if((sector<<9)>=targetsize) wearedone=1;
   }
 
   SetFilePointer(hDevice,0,NULL,FILE_BEGIN);
   sector=0;
   wearedone=0;
+  bufsectors=0;
   printf("Creating new pattern for recovering XOR and LDPC\n");
   while(!wearedone)
-  { 
-    pWriteSector=pWriteBlock+((sector&7)<<9); // We set the pointer to the current sector inside the 4096 Byte WriteBlock
-    if(sector==border0)
+  {
+    BYTE *pWriteSector=pWriteBlock+(bufsectors<<9); // slot for the current sector inside the large write buffer
+    if(sector>=border0 && sector<border7)
     {
-      memset(pWriteBlock, 0, 4096);
+      memset(pWriteSector, 0x00, 512);
     }
-    else if(sector==border7)
+    else if(sector>=border7 && sector<borderf)
     {
-      memset(pWriteSector, 0x77, 4096);
+      memset(pWriteSector, 0x77, 512);
     }
-    else if(sector==borderf)
+    else if(sector>=borderf && sector<borderphi)
     {
-      memset(pWriteSector, 0xff, 4096);
+      memset(pWriteSector, 0xff, 512);
     }
-    else if(sector<border0 || sector >=borderphi)
+    else // sector<border0 or sector>=borderphi : sector-number pattern (with optional ECC override)
     {
       sprintf((char*)pWriteSector,"|Block#%012lld (0x%08llX) Byte: %020lld Pos: %10lld MB\n***",sector,sector,sector*512,sector>>11);
       memset(pWriteSector+strlen((const char*)pWriteSector),'x',510-strlen((const char*)pWriteSector));
@@ -189,51 +206,59 @@ int main(int argc, char* argv[])
       if(sector>=borderphi && sector<borderecc)
       {
         int patternsize=eccreal*eccreal*majority;
-	long long offset=sector-borderphi;
-	long long pattern=offset/patternsize;
-	int patternpos=offset%eccreal;
-	int patternmod=(offset%(eccreal*eccreal))/eccreal;
-	int bittargetsector=(pattern>>3)>>9;
-	//printf("\npatternsize:%d\noffset:%d\npattern:%d\npatternpos:%d\nbittargetsector:%d\n",patternsize,offset,pattern,patternpos,bittargetsector);
+        long long offset=sector-borderphi;
+        long long pattern=offset/patternsize;
+        int patternpos=offset%eccreal;
+        int patternmod=(offset%(eccreal*eccreal))/eccreal;
+        int bittargetsector=(pattern>>3)>>9;
+        //printf("\npatternsize:%d\noffset:%d\npattern:%d\npatternpos:%d\nbittargetsector:%d\n",patternsize,offset,pattern,patternpos,bittargetsector);
         if(patternpos>0)
         {
           sprintf((char*)pWriteSector,"P%011llX%04X",pattern,patternpos);
-	  for(int tgt=16;tgt<512;tgt+=16)
+          for(int tgt=16;tgt<512;tgt+=16)
           {
             memcpy(pWriteSector+tgt,pWriteSector,16);
-	  }
+          }
           if(bittargetsector==(patternpos-1) && (patternmod&1))
           {
             int bittargetbyte=(pattern>>3) & 0x1FF;
-	    int bittargetbit=pattern&7;
-	    pWriteSector[bittargetbyte]^=1<<bittargetbit;
+            int bittargetbit=pattern&7;
+            pWriteSector[bittargetbyte]^=1<<bittargetbit;
           }
-        }		
+        }
       }
     }
-    if (((sector&7)==7) && !WriteFile(hDevice, pWriteBlock, 4096, &Ropen, NULL)) 
-    {
-      if(GetLastError()==ERROR_SECTOR_NOT_FOUND)
-      {
-        printf("Reached last sector.\n");
-        wearedone=1;
-      }
-      else
-      {
-        printf("Error when writing: %ld - %s", GetLastError(),GetLastErrorAsString()); 
-        return 0;
-      }
-    }
+    bufsectors++;
     sector++;
+    if((sector<<9)>=targetsize) wearedone=1;
+    if(bufsectors==BLOCKSECTORS || (wearedone && bufsectors>0))
+    {
+      if(!WriteFile(hDevice, pWriteBlock, (DWORD)(bufsectors<<9), &Ropen, NULL))
+      {
+        DWORD errorid=GetLastError();
+        if(errorid==ERROR_SECTOR_NOT_FOUND)
+        {
+          printf("Reached last sector.\n");
+          wearedone=1;
+        }
+        else
+        {
+          printf("Error when writing: %ld - %s", errorid,GetLastErrorAsString());
+          return 0;
+        }
+      }
+      bufsectors=0;
+    }
     if(!(sector&0x3ffff))
     {
       printf("Status: Sector %lld (%lld GB)\n",sector,sector/2/1024/1024);
     }
-    if((sector<<9)>=targetsize) wearedone=1;
   }
 
+  FlushFileBuffers(hDevice);
   DeviceIoControl(hDevice, FSCTL_UNLOCK_VOLUME, NULL, 0, NULL, 0, &Ropen, NULL);
   CloseHandle(hDevice);
+  VirtualFree(pWriteBlock,0,MEM_RELEASE);
   printf("We are done writing the pattern.\n");
   handle=fopen(xmlfn,"w");
   fprintf(handle,"<root overwritten='1'>\n<device>%s</device>\n",argv[1]);
