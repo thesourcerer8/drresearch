@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
+#include <winioctl.h>
 
 #define BLOCKBYTES   (8LL * 1024 * 1024)
 #define BLOCKSECTORS (BLOCKBYTES / 512)
@@ -9,6 +10,101 @@
 long long idema_gb2lba(long long advertised)
 {
   return((97696368) + (1953504 * (advertised - 50)));
+}
+
+// Nimmt den Device-Namen (z.B. "\\.\PhysicalDrive1") und dismountet alle zugehörigen Partitionen
+void DismountDependentVolumes(const char* physicalDrivePath)
+{
+    // 1. Physische Laufwerksnummer aus dem Pfad extrahieren (z.B. "\\.\PhysicalDrive1" -> 1)
+    int targetDiskNumber = -1;
+    const char* pNum = strrchr(physicalDrivePath, 'e'); // Sucht das 'e' von "Drive"
+    if (pNum && *(pNum + 1) != '\0') {
+        targetDiskNumber = atoi(pNum + 1);
+    } else {
+        // Falls ein anderer Pfadtyp übergeben wurde, Fallback oder Abbruch
+        targetDiskNumber = atoi(physicalDrivePath + strlen(physicalDrivePath) - 1);
+    }
+
+    if (targetDiskNumber < 0) {
+        printf("Fehler: Konnte physische Laufwerksnummer nicht aus %s extrahieren.\n", physicalDrivePath);
+        return;
+    }
+
+    // 2. Alle logischen Laufwerksbuchstaben im System abfragen
+    char driveStrings[256];
+    DWORD len = GetLogicalDriveStringsA(sizeof(driveStrings), driveStrings);
+    if (len == 0 || len > sizeof(driveStrings)) {
+        printf("Fehler beim Abrufen der logischen Laufwerke.\n");
+        return;
+    }
+
+    printf("Analysiere logische Volumes fuer physische Disk %d...\n", targetDiskNumber);
+
+    // GetLogicalDriveStringsA gibt eine durch Nullbytes getrennte Liste zurück, die mit zwei Nullbytes endet
+    char* currentDrive = driveStrings;
+    while (*currentDrive)
+    {
+        // Wir brauchen nur den Buchstaben (z.B. "C:" statt "C:\")
+        char driveLetter[10];
+        snprintf(driveLetter, sizeof(driveLetter), "\\\\.\\%c:", currentDrive[0]);
+
+        // Überspringe Floppy/A/B und optische Laufwerke zur Sicherheit, oder prüfe den DriveType
+        UINT driveType = GetDriveTypeA(currentDrive);
+        if (driveType == DRIVE_REMOVABLE || driveType == DRIVE_FIXED)
+        {
+            // Handle auf das logische Volume öffnen
+            HANDLE hVolume = CreateFileA(driveLetter, GENERIC_READ | GENERIC_WRITE,
+                                         FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
+                                         OPEN_EXISTING, 0, NULL);
+
+            if (hVolume != INVALID_HANDLE_VALUE)
+            {
+                VOLUME_DISK_EXTENTS extents;
+                DWORD bytesReturned;
+
+                // 3. Disk Extents abfragen (Welche physische Platte gehört zu diesem Buchstaben?)
+                if (DeviceIoControl(hVolume, IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS,
+                                    NULL, 0, &extents, sizeof(extents), &bytesReturned, NULL))
+                {
+                    // Schauen, ob das Volume auf unserer Ziel-Disk liegt
+                    if (extents.NumberOfDiskExtents > 0 && extents.Extents[0].DiskNumber == (DWORD)targetDiskNumber)
+                    {
+                        // 4. Match gefunden! Jetzt sperren und dismounten
+                        if (DeviceIoControl(hVolume, FSCTL_LOCK_VOLUME, NULL, 0, NULL, 0, &bytesReturned, NULL))
+                        {
+                            if (DeviceIoControl(hVolume, FSCTL_DISMOUNT_VOLUME, NULL, 0, NULL, 0, &bytesReturned, NULL))
+                            {
+                                printf(" -> [%c:] erfolgreich auf Disk %d gesperrt und ausgehaengt.\n", currentDrive[0], targetDiskNumber);
+
+                                // WICHTIG: Das Handle hVolume wird hier bewusst NICHT geschlossen!
+                                // Wenn du es schließt, hebt Windows das Lock sofort wieder auf.
+                                // Im Labor-Einsatz reicht es oft, es offen zu lassen (OS bereinigt beim Prozess-Exit)
+                                // Alternativ speichert man die Handles in einem Array und schließt sie am Ende von main().
+                            }
+                            else {
+                                printf(" -> [%c:] Lock erfolgreich, aber Dismount fehlgeschlagen.\n", currentDrive[0]);
+                                CloseHandle(hVolume);
+                            }
+                        }
+                        else {
+                            printf(" -> [%c:] Gefunden, aber Sperrung verweigert (Zugriff blockiert).\n", currentDrive[0]);
+                            CloseHandle(hVolume);
+                        }
+                    }
+                    else {
+                        // Gehört zu einer anderen physischen Festplatte
+                        CloseHandle(hVolume);
+                    }
+                }
+                else {
+                    // IOCTL nicht unterstützt (z.B. Netzlaufwerke)
+                    CloseHandle(hVolume);
+                }
+            }
+        }
+        // Zum nächsten String in der Liste springen (+4 wegen "C:\\0")
+        currentDrive += strlen(currentDrive) + 1;
+    }
 }
 
 char errorbuffer[2000];
@@ -89,6 +185,8 @@ int main(int argc, char* argv[])
     fprintf(stderr,"ERROR: could not allocate a %lld byte write buffer.\n",(long long)BLOCKBYTES);
     return -4;
   }
+
+  DismountDependentVolumes(argv[1]);
 
   HANDLE hDevice = CreateFileA(argv[1], GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_NO_BUFFERING, NULL);
 
