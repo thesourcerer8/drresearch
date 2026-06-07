@@ -34,6 +34,7 @@ void showUsage()
   fprintf(stderr,"Usage: initpattern.exe \\\\.\\PhysicalDrive1 [size in MB] [data area size in Byte]\n");
   printf("Available disks:\n");
   system("wmic diskdrive list brief");
+  system("powershell -Command \"Get-PhysicalDisk\"");
 }
 
 int main(int argc, char* argv[])
@@ -97,7 +98,7 @@ int main(int argc, char* argv[])
     if (hDevice == INVALID_HANDLE_VALUE)
     {
       printf("CreateFileA returned an error when trying to open the file: %ld - %s", GetLastError(),GetLastErrorAsString());
-      return 0;
+      return -5;
     }
   }
   printf("Opened successfully\n");
@@ -105,7 +106,7 @@ int main(int argc, char* argv[])
   DeviceIoControl(hDevice, FSCTL_LOCK_VOLUME, NULL, 0, NULL, 0, &Ropen, NULL);
 
   DWORD lpBytesReturned=0;
-  DeviceIoControl(hDevice,IOCTL_DISK_GET_LENGTH_INFO,NULL,0,pWriteBlock,512,&lpBytesReturned,NULL);
+  DeviceIoControl(hDevice,IOCTL_DISK_GET_LENGTH_INFO,NULL,0,pWriteBlock,8,&lpBytesReturned,NULL);
   if(lpBytesReturned==8)
   {
     targetsize=*(unsigned long long *)pWriteBlock;
@@ -146,7 +147,7 @@ int main(int argc, char* argv[])
   while(!wearedone)
   {
     BYTE *pWriteSector=pWriteBlock+(bufsectors<<9); // slot for the current sector inside the large write buffer
-    sprintf((char*)pWriteSector,"|Block#%012lld (0x%08llX) Byte: %020lld Pos: %10lld MB\n*** OVERWRITTEN",sector,sector,sector*512,sector>>11);
+    snprintf((char*)pWriteSector,512,"|Block#%012lld (0x%08llX) Byte: %020lld Pos: %10lld MB\n*** OVERWRITTEN",sector,sector,sector*512,sector>>11);
     memset(pWriteSector+strlen((const char*)pWriteSector),'x',510-strlen((const char*)pWriteSector));
     pWriteSector[510] = '\n';
     pWriteSector[511] = 0x00;
@@ -166,7 +167,7 @@ int main(int argc, char* argv[])
         else
         {
           printf("Error when writing: %ld - %s", errorid,GetLastErrorAsString());
-          return 0;
+          return -6;
         }
       }
       bufsectors=0;
@@ -199,7 +200,7 @@ int main(int argc, char* argv[])
     }
     else // sector<border0 or sector>=borderphi : sector-number pattern (with optional ECC override)
     {
-      sprintf((char*)pWriteSector,"|Block#%012lld (0x%08llX) Byte: %020lld Pos: %10lld MB\n***",sector,sector,sector*512,sector>>11);
+      snprintf((char*)pWriteSector,512,"|Block#%012lld (0x%08llX) Byte: %020lld Pos: %10lld MB\n***",sector,sector,sector*512,sector>>11);
       memset(pWriteSector+strlen((const char*)pWriteSector),'x',510-strlen((const char*)pWriteSector));
       pWriteSector[510] = '\n';
       pWriteSector[511] = 0x00;
@@ -244,7 +245,7 @@ int main(int argc, char* argv[])
         else
         {
           printf("Error when writing: %ld - %s", errorid,GetLastErrorAsString());
-          return 0;
+          return -7;
         }
       }
       bufsectors=0;
