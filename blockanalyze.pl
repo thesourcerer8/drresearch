@@ -10,7 +10,15 @@ my $inputfile=$ARGV[0];
 my $pagesize=$ARGV[1]; # Bytes
 my $pagesperblock=$ARGV[2]; # 
 
+sub popcount($)
+{
+  return unpack("%32b*",$_[0]);
+}
 
+sub mymin($$)
+{
+  return ($_[0]<$_[1])?$_[0]:$_[1];
+}
 
 
 open IN,"<$inputfile";
@@ -19,6 +27,7 @@ my $isXor=-s "$inputfile.xor";
 our @xorkey=();
 
 my $path=$ENV{'PWD'};
+print "Reading from $inputfile : http://localhost/cgi-bin/drresearch/xorviewer.pl?dump=$path/$inputfile&pagesize=$pagesize&pagesperblock=$pagesperblock&xormode=2\n";
 
 if($isXor)
 {
@@ -36,18 +45,31 @@ if($isXor)
 
 my $ende=0;
 
+my $sep="\xF0" x ($pagesize);
+
+open OUT,">$inputfile-OUT.dump";
+binmode OUT;
+print "Writing to $inputfile-OUT.dump : http://localhost/cgi-bin/drresearch/xorviewer.pl?dump=$path/$inputfile-OUT.dump&pagesize=$pagesize&pagesperblock=$pagesperblock&xormode=2\n";
 open AND,">$inputfile-AND.dump";
+binmode AND;
 print "Writing to $inputfile-AND.dump : http://localhost/cgi-bin/drresearch/xorviewer.pl?dump=$path/$inputfile-AND.dump&pagesize=$pagesize&pagesperblock=$pagesperblock&xormode=2\n";
 open OR,">$inputfile-OR.dump";
-print "Writing to $inputfile-OR.dump : http://localhost/cgi-bin/drresearch/xorviewer.pl?dump=$path/$inputfile-X-OR.dump&pagesize=$pagesize&pagesperblock=$pagesperblock&xormode=2\n";
+binmode OR;
+print "Writing to $inputfile-OR.dump : http://localhost/cgi-bin/drresearch/xorviewer.pl?dump=$path/$inputfile-OR.dump&pagesize=$pagesize&pagesperblock=$pagesperblock&xormode=2\n";
 
-foreach(0 .. $pagesperblock-1)
+if($isXor)
 {
-  read XOR,$xorkey[$_],$pagesize;
+  foreach(0 .. $pagesperblock-1)
+  {
+    read XOR,$xorkey[$_],$pagesize;
+  }
+  close XOR;
 }
 
-close XOR;
+my %occ=();
+our %stripes=();
 
+our $counter=0;
 while(!$ende)
 {
   my @content=();	
@@ -66,8 +88,31 @@ while(!$ende)
     $orp |= $content[$_];
   }
 
-  print AND $andp;
-  print OR $orp;
+  my $x=$andp^$orp;
+
+  my $pop=popcount($x);
+  my $inv=$pagesize*8-$pop;
+  my $s=mymin($pop,$inv);
+  my $comp=$s<$pop?1:0;
+  #print "$counter $s\n";
+  $occ{$s}++;
+
+  if($s>3160 && $s<3180)
+  {
+    print AND $sep if($counter%50==0);
+    print AND $andp;
+    print OR $sep if($counter%50==0);
+    print OR $orp;
+    print OUT $sep if($counter%50==0);
+    print OUT $x;
+    foreach(0 .. $pagesize*8-1)
+    {
+      if(vec($x,$_,1) ne $comp)
+      {
+        $stripes{$_}++;
+      }
+    }
+  }
 
   if($isXor)
   {
@@ -81,9 +126,10 @@ while(!$ende)
 
     print ANDX $andp;
     print ORX $orp;
+    print OUT $andp.$orp.($andp^$orp);
 
   }
-
+  $counter++;
 }
 
 close AND;
@@ -92,6 +138,16 @@ if($isXor)
 {
   close ANDX;
   close ORX;
+}
+
+foreach(sort {$a<=>$b} keys %occ)
+{
+  print "$_: $occ{$_}\n" if($occ{$_}>1);
+}
+
+foreach(sort {$a<=>$b} keys %stripes)
+{
+  print "$_: $stripes{$_} Byte:".int($_/8)." Bit:".($_%8)."\n" if($stripes{$_}>10);
 }
 
 print "Done.\n";
