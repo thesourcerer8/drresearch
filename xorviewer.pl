@@ -54,6 +54,19 @@ sub readfile($)
   }
   return "";
 }
+sub readfilesubstr($$$) # Like substr but reading from a file
+{
+  if(open RFSIN,"<$_[0]")
+  {
+    binmode RFSIN;
+    seek RFSIN,$_[1],0;
+    my $val="";
+    read RFSIN,$val,$_[2];
+    close RFSIN;
+    return $val;
+  }
+  return "";
+}
 sub sanitizeHTML
 {
   my $d=$_[0];
@@ -99,13 +112,15 @@ sub bin2hexascii($)
 
 if($dump !~ m/\.(dump|dmp|raw|bin|img|decoded|g|m|xor\d*)$/)
 {
-  print "For security reasons, this hex viewer currently only allows to display .dump and .dmp files.";
+  print "For security reasons, this hex viewer currently only allows to display .dump and .dmp files.\n";
   exit;
 }
 
-my $xor=readfile($in{'xorkey'} || "$dump.xor");
+my $xorfn=in{'xorkey'} || "$dump.xor";
+#my $xor=readfile($xorfn); # Too much memory!
+my $xorsize=-s $xorfn || 0;
 
-my $pagesperblock=int($in{'pagesperblock'} || (($pagesize && length($xor)) ? length($xor)/int($pagesize) : 1));
+my $pagesperblock=int($in{'pagesperblock'} || (($pagesize && $xorsize) ? $xorsize/int($pagesize) : 1));
 
 my $dumpsize=-s $dump;
 
@@ -292,9 +307,9 @@ else
   print "<div align='right'><a href='http://www2.futureware.at/ldpc/ldpc.php'>Page Structure</a></div>";
 }
 
-print "<div>Stats: pagesize:".int($pagesize)." pagesperblock:$pagesperblock".(length($xor)?" xorsize:".length($xor):"")." start:".int($start)." pagestart:".int($pagestart)." block:".int($pagestart/$pagesperblock)."/page:".($pagestart % $pagesperblock)." Total-Blocks:".int($dumpsize/$pagesize/$pagesperblock).(length($xor)?" XOR-Offset:".int($xoroffset):"")."</div><br/>\n";
+print "<div>Stats: pagesize:".int($pagesize)." pagesperblock:$pagesperblock".($xorsize?" xorsize:".$xorsize:"")." start:".int($start)." pagestart:".int($pagestart)." block:".int($pagestart/$pagesperblock)."/page:".($pagestart % $pagesperblock)." Total-Blocks:".int($dumpsize/$pagesize/$pagesperblock).($xorsize?" XOR-Offset:".int($xoroffset):"")."</div><br/>\n";
 
-if(length($xor))
+if($xorsize)
 {
 print <<EOF
 	<input type="button" onclick="javascript:mytoggle();" value='XOR ON/OFF'/>
@@ -315,7 +330,7 @@ foreach(0 .. $npages)
   #print tell($IN)."\n";
   my $fragment=substr($content,$start,$pagefrag);
   print sanitizeHTML(bin2hexascii($fragment))."\n" if($displayhex);
-  if(!defined($xor))
+  if(!$xorsize)
   {
     foreach my $x(0 .. $pagefrag*8)
     {
@@ -325,7 +340,7 @@ foreach(0 .. $npages)
 }
 print "</pre></div>\n";
 
-if(defined($xor))
+if($xorsize)
 {
   print "<div id='mydiv2' style='".(($xormode&1)?'position:absolute; opacity:100%; color:darkgreen; z-index: 1':'position:absolute; opacity:20%; color:darkgreen; z-index: 0')."'/><br/><br/><br/><pre>";
   my $ret2=seek($IN,$pagestart*$pagesize,0);
@@ -337,9 +352,9 @@ if(defined($xor))
     read $IN,$content,$pagesize;
     #print tell($IN)."\n";
     my $xorpage=($_+$pagestart+$xoroffset) % $pagesperblock;
-    $xorpage=int($xorpage/3) if(($pagestart/$pagesperblock)<207 && $dump=~m/2251-11/);
+    $xorpage=int($xorpage/3) if(($pagestart/$pagesperblock)<207 && $dump=~m/2251-11/); # SLC MODE adaption for XOR for Phison
     my $plainfragment=substr($content,$start,$pagefrag);
-    my $xorfragment=$plainfragment ^ substr($xor,$xorpage*$pagesize+$start,$pagefrag);
+    my $xorfragment=$plainfragment ^ readfilesubstr($xorfn,$xorpage*$pagesize+$start,$pagefrag);
     print sanitizeHTML(bin2hexascii($xorfragment))." $_\n" if($displayhex);
     foreach my $x(0 .. $pagefrag*8)
     {
@@ -354,7 +369,7 @@ print "Image: ";
 
 print "\n<img src='data:image/png;base64,".encode_base64($img->png)."' style='box-shadow: 0px 0px 2px 2px gold' onmousemove='updatecoords(this); return(true);' onclick='gotocoords(this);')/>";
 
-print "<div id='coords'>...</div>";
+print "<div id='coords'></div>";
 
 print "</body>\n</html>";
 
