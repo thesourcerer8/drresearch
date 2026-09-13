@@ -356,7 +356,8 @@ if($xorsize)
     #print tell($IN)."\n";
     read $IN,$content,$pagesize;
     #print tell($IN)."\n";
-    my $xorpage=($_+$pagestart+$xoroffset) % $pagesperblock;
+    my $xorpage=($_+$pagestart+$xoroffset);
+    $xorpage%=$pagesperblock if($xorsize<=($pagesperblock*$pagesize));
     $xorpage=int($xorpage/3) if(($pagestart/$pagesperblock)<207 && $dump=~m/2251-11/); # SLC MODE adaption for XOR for Phison
     my $plainfragment=substr($content,$start,$pagefrag);
     my $xorfragment=$plainfragment ^ readfilesubstr($xorfn,$xorpage*$pagesize+$start,$pagefrag);
