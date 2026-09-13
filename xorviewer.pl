@@ -115,6 +115,11 @@ if($dump !~ m/\.(dump|dmp|raw|bin|img|decoded|g|m|xor\d*)$/)
   print "For security reasons, this hex viewer currently only allows to display .dump and .dmp files.\n";
   exit;
 }
+if(defined($in{'xorkey'}) && $in{'xorkey'}!~ m/\.(dump|dmp|raw|bin|img|decoded|g|m|xor\d*)$/)
+{
+  print "For security reasons, this hex viewer currently only allows to display .dump and .dmp files.\n";
+  exit;
+}
 
 my $xorfn=$in{'xorkey'} || "$dump.xor";
 #my $xor=readfile($xorfn); # Too much memory!
