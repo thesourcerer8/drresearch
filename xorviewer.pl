@@ -116,7 +116,7 @@ if($dump !~ m/\.(dump|dmp|raw|bin|img|decoded|g|m|xor\d*)$/)
   exit;
 }
 
-my $xorfn=in{'xorkey'} || "$dump.xor";
+my $xorfn=$in{'xorkey'} || "$dump.xor";
 #my $xor=readfile($xorfn); # Too much memory!
 my $xorsize=-s $xorfn || 0;
 
